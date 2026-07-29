@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>筆芯導電的探究與實作</title>
+<meta name="description" content="國小高年級與國中適用的數位互動教材：從「鉛筆芯會導電嗎」出發，透過預測、模擬、實體實作與數據對照，探究筆芯長度、粗細與軟硬對導電的影響。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="筆芯導電的探究與實作">
+<meta property="og:description" content="預測 → 模擬 → 實作 → 對照。國小高年級與國中雙軌的電學探究互動教材，搭配實體實驗與可列印學習單。">
+<meta property="og:url" content="https://prayer168.github.io/pencil-lead-conductivity/">
+<meta property="og:image" content="https://prayer168.github.io/pencil-lead-conductivity/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="zh_TW">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="筆芯導電的探究與實作">
+<meta name="twitter:description" content="預測 → 模擬 → 實作 → 對照。國小高年級與國中雙軌的電學探究互動教材。">
+<meta name="twitter:image" content="https://prayer168.github.io/pencil-lead-conductivity/assets/og-image.png">
+<style>
+/* ===== 設計系統 ===== */
+:root{
+  --graphite:#3A3F44;      /* 石墨 */
+  --clay:#C4A484;          /* 黏土 */
+  --current:#E8720C;       /* 電流 */
+  --electron:#2563EB;      /* 電子 */
+  --copper:#B87333;        /* 銅 */
+  --wood:#A0784A;          /* 木 */
+  --ink:#1D2126;
+  --ink-soft:#565E66;
+  --line:#D6DBE0;
+  --bg:#F5F7F9;
+  --panel:#FFFFFF;
+  --elem:#0F8B4C;          /* 國小版主色 */
+  --junior:#1E5FBF;        /* 國中版主色 */
+  --warn:#B3261E;
+  --warn-bg:#FDECEA;
+  --ok:#0F8B4C;
+  --accent:var(--elem);
+  --radius:14px;
+  --shadow:0 1px 2px rgba(20,30,40,.06),0 8px 24px rgba(20,30,40,.06);
+  --mono:ui-monospace,"Cascadia Mono","Consolas",monospace;
+}
+body.mode-junior{ --accent:var(--junior); }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+  font-size:16px; line-height:1.7; overflow-x:hidden;
+}
+h1,h2,h3,h4{line-height:1.35; margin:0 0 .5em}
+h2{font-size:clamp(1.25rem,1rem + 1.1vw,1.6rem)}
+h3{font-size:clamp(1.05rem,.95rem + .5vw,1.25rem); color:var(--ink)}
+h4{font-size:1rem}
+p{margin:0 0 .8em}
+button{font:inherit; color:inherit}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px; border-radius:6px}
+
+.wrap{max-width:1160px; margin:0 auto; padding:0 16px}
+
+/* ===== Header ===== */
+.site-head{background:var(--panel); border-bottom:1px solid var(--line); position:relative; z-index:5}
+.head-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:14px 0}
+.brand{display:flex; align-items:center; gap:12px; min-width:0}
+.brand h1{font-size:clamp(1.15rem,1rem + .9vw,1.5rem); margin:0; letter-spacing:.01em}
+.brand .sub{font-size:.8rem; color:var(--ink-soft); margin:0}
+.brand-mark{flex:none}
+
+/* 版本切換 */
+.mode-switch{display:flex; gap:0; background:#EDF1F4; border:1px solid var(--line); border-radius:999px; padding:3px}
+.mode-switch button{
+  border:0; background:transparent; padding:7px 14px; border-radius:999px; cursor:pointer;
+  font-size:.9rem; font-weight:600; color:var(--ink-soft); white-space:nowrap;
+}
+.mode-switch button[aria-pressed="true"]{background:var(--accent); color:#fff; box-shadow:0 1px 3px rgba(0,0,0,.18)}
+
+/* ===== Tabs ===== */
+.tabbar{background:var(--panel); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:4}
+.tablist{display:flex; gap:2px; overflow-x:auto; scrollbar-width:thin; -webkit-overflow-scrolling:touch}
+.tablist button{
+  border:0; background:transparent; padding:12px 14px; cursor:pointer; white-space:nowrap;
+  font-size:.92rem; font-weight:600; color:var(--ink-soft);
+  border-bottom:3px solid transparent;
+}
+.tablist button[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent)}
+.tablist button .n{
+  display:inline-flex; width:1.5em; height:1.5em; align-items:center; justify-content:center;
+  border-radius:50%; background:#E7EBEF; font-size:.78rem; margin-right:6px; color:var(--ink-soft);
+}
+.tablist button[aria-selected="true"] .n{background:var(--accent); color:#fff}
+
+/* ===== Panels ===== */
+.panel{padding:22px 0 56px}
+.panel[hidden]{display:none}
+.lead{font-size:1.05rem; color:var(--ink-soft); max-width:62ch}
+
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); margin:0 0 18px}
+.card > :last-child{margin-bottom:0}
+.grid2{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:18px; align-items:start}
+.grid-half{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; align-items:start}
+@media (max-width:860px){ .grid2{grid-template-columns:1fr} }
+
+.fig{margin:0}
+.fig svg{display:block; width:100%; height:auto}
+.figcap{font-size:.85rem; color:var(--ink-soft); margin-top:8px}
+
+.eyebrow{font-size:.78rem; font-weight:700; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; margin:0 0 4px}
+
+/* 版本專屬內容 */
+body.mode-elem .only-junior{display:none !important}
+body.mode-junior .only-elem{display:none !important}
+
+/* 按鈕 */
+.btn{
+  border:1px solid var(--line); background:var(--panel); border-radius:10px;
+  padding:9px 15px; cursor:pointer; font-size:.92rem; font-weight:600;
+}
+.btn:hover{background:#F0F3F6}
+.btn-primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.btn-primary:hover{filter:brightness(.94); background:var(--accent)}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.btn-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.btn-sm{padding:6px 11px; font-size:.85rem}
+
+/* 控制列 */
+.ctrl{margin:0 0 14px}
+.ctrl label{display:block; font-weight:600; font-size:.9rem; margin-bottom:6px}
+/* 滑桿：加大可觸控高度與滑塊，手指也好操作 */
+.ctrl input[type=range]{
+  width:100%; accent-color:var(--accent);
+  height:44px; margin:0; background:transparent; -webkit-appearance:none; appearance:none; cursor:pointer;
+}
+.ctrl input[type=range]::-webkit-slider-runnable-track{height:8px; border-radius:4px; background:#DDE3E9}
+.ctrl input[type=range]::-moz-range-track{height:8px; border-radius:4px; background:#DDE3E9}
+.ctrl input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:28px; height:28px; margin-top:-10px;
+  border-radius:50%; background:var(--accent); border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.28);
+}
+.ctrl input[type=range]::-moz-range-thumb{
+  width:22px; height:22px; border-radius:50%; background:var(--accent); border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.28);
+}
+.seg{display:flex; flex-wrap:wrap; gap:6px}
+.seg button{
+  border:1px solid var(--line); background:var(--panel); border-radius:999px;
+  padding:7px 13px; cursor:pointer; font-size:.88rem; font-weight:600; color:var(--ink-soft);
+}
+.seg button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+
+/* 讀數 */
+.readout{display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px}
+.readout .r{
+  flex:1 1 110px; background:#F2F5F8; border:1px solid var(--line); border-radius:10px; padding:9px 12px;
+}
+.readout .r .k{font-size:.76rem; color:var(--ink-soft); font-weight:600}
+.readout .r .v{font-size:1.3rem; font-weight:700; font-family:var(--mono); letter-spacing:-.01em}
+.readout .r .u{font-size:.85rem; font-weight:600; color:var(--ink-soft)}
+
+/* 表格 */
+table{border-collapse:collapse; width:100%; font-size:.9rem}
+th,td{border:1px solid var(--line); padding:7px 9px; text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{background:#F2F5F8; font-size:.82rem}
+tbody tr:nth-child(even){background:#FAFBFC}
+/* 表格內的刪除鈕：維持視覺小巧，但觸控範圍不小於 44px */
+td .btn{
+  padding:2px 8px; font-size:.9rem; line-height:1;
+  min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center;
+}
+.table-scroll{overflow-x:auto}
+
+/* 提示區塊 */
+.note{border-left:4px solid var(--accent); background:#F2F7F4; padding:12px 14px; border-radius:0 10px 10px 0; font-size:.92rem}
+body.mode-junior .note{background:#F1F5FC}
+.note strong{color:var(--accent)}
+.danger{border:2px solid var(--warn); background:var(--warn-bg); border-radius:var(--radius); padding:16px 18px}
+.danger h3{color:var(--warn); display:flex; align-items:center; gap:8px}
+.danger ol{margin:0; padding-left:1.2em}
+.danger li{margin:.35em 0}
+.danger li strong{color:var(--warn)}
+.teacher{border:1px dashed #9AA4AE; background:#FBFCFD; border-radius:12px; padding:14px 16px; font-size:.88rem; color:var(--ink-soft)}
+.teacher h4{color:var(--ink); margin-bottom:.35em}
+
+/* 迷思卡 */
+.myths{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px}
+.myth{border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#fff}
+.myth .x{color:var(--warn); font-weight:700; font-size:.86rem}
+.myth .o{color:var(--ok); font-weight:700; font-size:.86rem; margin-top:6px}
+.myth p{margin:.2em 0 0; font-size:.88rem}
+
+/* 步驟條 */
+.steps{display:flex; gap:6px; margin:0 0 16px; flex-wrap:wrap}
+.steps .s{
+  flex:1 1 130px; border:1px solid var(--line); background:var(--panel); border-radius:10px;
+  padding:9px 11px; font-size:.85rem; color:var(--ink-soft); position:relative;
+}
+.steps .s b{display:block; font-size:.95rem; color:var(--ink)}
+.steps .s[data-state="done"]{border-color:var(--ok); background:#F1F8F4}
+.steps .s[data-state="done"] b::after{content:" ✓"; color:var(--ok)}
+.steps .s[data-state="active"]{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+.steps .s[data-state="active"] b{color:var(--accent)}
+
+/* 預測區 */
+.predict textarea{
+  width:100%; min-height:74px; border:1px solid var(--line); border-radius:10px; padding:10px;
+  font:inherit; font-size:.95rem; resize:vertical;
+}
+.predict .choices{display:flex; flex-wrap:wrap; gap:8px}
+.locked{position:relative}
+.locked::after{
+  content:""; position:absolute; inset:0; background:rgba(245,247,249,.72); border-radius:var(--radius);
+  backdrop-filter:blur(1.5px); pointer-events:none;
+}
+.lock-msg{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:2;
+  font-weight:600; color:var(--ink-soft); text-align:center; padding:20px; pointer-events:none;
+}
+.locked-host{position:relative}
+.locked-host:not(.is-locked) .lock-msg{display:none}
+.locked-host:not(.is-locked) .locked::after{display:none}
+/* 鎖住時真的不能操作，不只是視覺遮罩 */
+.locked-host.is-locked .locked{pointer-events:none; user-select:none}
+
+/* 離線實作卡 */
+.offline{
+  background:repeating-linear-gradient(0deg,#FFFDF6,#FFFDF6 27px,#F0EAD8 27px,#F0EAD8 28px);
+  border:1px solid #DCD3BC; border-radius:12px; padding:18px 20px; box-shadow:0 2px 0 #E9E1CB,var(--shadow);
+}
+.offline h3{display:flex; align-items:center; gap:8px}
+.offline ol{padding-left:1.25em; margin:.4em 0}
+.offline li{margin:.3em 0}
+
+/* 分類器 */
+.sorter{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
+.bin{border:2px dashed var(--line); border-radius:12px; padding:10px; min-height:130px; background:#FAFBFC}
+.bin.is-target{border-color:var(--accent); background:#F2F7F4}
+.bin h4{font-size:.9rem; margin-bottom:2px}
+.bin .hint{font-size:.76rem; color:var(--ink-soft); margin:0 0 8px}
+.chip{
+  display:block; width:100%; text-align:left; border:1px solid var(--line); background:#fff;
+  border-radius:10px; padding:10px 12px; margin:0 0 7px; cursor:pointer; font-size:.9rem; font-weight:600;
+  min-height:44px;
+}
+.chip[aria-pressed="true"]{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.chip.ok{border-color:var(--ok); background:#F1F8F4}
+.chip.ng{border-color:var(--warn); background:var(--warn-bg)}
+.pool{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:7px}
+.pool .chip{margin:0}
+
+/* 檢核清單 */
+.checklist{list-style:none; padding:0; margin:0}
+.checklist li{margin:0 0 6px}
+.checklist label{display:flex; gap:10px; align-items:flex-start; cursor:pointer; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:.92rem}
+.checklist input{margin-top:.28em; width:18px; height:18px; accent-color:var(--ok); flex:none}
+.checklist label:has(input:checked){background:#F1F8F4; border-color:var(--ok)}
+
+/* 測驗 */
+.quiz-q{border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:0 0 12px; background:#fff}
+.quiz-q .qh{font-weight:700; margin-bottom:8px}
+.quiz-opt{display:block; width:100%; text-align:left; border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px 12px; margin:0 0 6px; cursor:pointer; font-size:.92rem; min-height:44px}
+.quiz-opt:hover{background:#F4F7FA}
+.quiz-opt.correct{border-color:var(--ok); background:#F1F8F4; font-weight:600}
+.quiz-opt.wrong{border-color:var(--warn); background:var(--warn-bg)}
+.quiz-fb{font-size:.9rem; margin-top:8px; padding:9px 11px; border-radius:8px; background:#F2F5F8}
+.quiz-fb.ok{background:#F1F8F4; border-left:4px solid var(--ok)}
+.quiz-fb.ng{background:var(--warn-bg); border-left:4px solid var(--warn)}
+.score{font-size:1.05rem; font-weight:700}
+
+/* 生活應用 */
+.apps{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px}
+.app{border:1px solid var(--line); border-radius:12px; padding:14px; background:#fff}
+.app svg{width:100%; height:auto; display:block; margin-bottom:8px}
+.app h4{margin-bottom:.25em}
+.app p{font-size:.88rem; margin:0; color:var(--ink-soft)}
+
+/* 成果卡 */
+.resultcard{border:2px solid var(--accent); border-radius:14px; padding:18px; background:#fff}
+.resultcard dt{font-weight:700; font-size:.85rem; color:var(--accent); margin-top:10px}
+.resultcard dd{margin:2px 0 0; font-size:.93rem}
+
+details{border:1px solid var(--line); border-radius:10px; padding:10px 14px; background:#fff; margin:0 0 12px}
+details[open]{background:#FAFBFC}
+summary{cursor:pointer; font-weight:600; font-size:.93rem}
+summary::marker{color:var(--accent)}
+
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+.chart-wrap{overflow-x:auto}
+.chart-wrap svg{min-width:300px}
+.legend{display:flex; flex-wrap:wrap; gap:14px; font-size:.85rem; color:var(--ink-soft); margin-top:6px}
+.legend i{display:inline-block; width:14px; height:14px; vertical-align:-2px; margin-right:5px; border-radius:3px}
+
+.site-foot{border-top:1px solid var(--line); background:var(--panel); padding:20px 0; font-size:.85rem; color:var(--ink-soft)}
+.site-foot a{color:var(--accent)}
+
+/* 動畫 */
+@keyframes flow{to{stroke-dashoffset:-24}}
+.flowline{stroke-dasharray:6 6; animation:flow 1s linear infinite}
+.is-paused .flowline{animation-play-state:paused}
+@keyframes drift{to{transform:translateX(var(--dx,240px))}}
+.electron{animation:drift 3.2s linear infinite}
+.is-paused .electron{animation-play-state:paused}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important}
+  .flowline{stroke-dasharray:none}
+}
+@media print{ .tabbar,.mode-switch{display:none} .panel[hidden]{display:block !important} }
+</style>
+</head>
+<body class="mode-elem">
+
+<header class="site-head">
+  <div class="wrap head-row">
+    <div class="brand">
+      <svg class="brand-mark" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="教材識別圖示：一段鉛筆芯與流過它的電流">
+        <rect x="2" y="16" width="36" height="8" rx="4" fill="#3A3F44"/>
+        <rect x="2" y="16" width="36" height="3" rx="1.5" fill="#5A6169"/>
+        <path d="M0 20h6M34 20h6" stroke="#E8720C" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="12" cy="20" r="2" fill="#E8720C"/>
+        <circle cx="20" cy="20" r="2" fill="#E8720C"/>
+        <circle cx="28" cy="20" r="2" fill="#E8720C"/>
+      </svg>
+      <div>
+        <h1>筆芯導電的探究與實作</h1>
+        <p class="sub">預測 → 模擬 → 實作 → 對照｜國小高年級・國中</p>
+      </div>
+    </div>
+    <div class="mode-switch" role="group" aria-label="選擇教材版本">
+      <button type="button" id="modeElem" aria-pressed="true">🌱 國小版</button>
+      <button type="button" id="modeJunior" aria-pressed="false">🔬 國中版</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabbar" aria-label="教材單元">
+  <div class="wrap">
+    <div class="tablist" role="tablist" aria-label="教材單元頁籤">
+      <button role="tab" id="tab-1" aria-controls="panel-1" aria-selected="true" tabindex="0"><span class="n">1</span>會導電嗎</button>
+      <button role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" tabindex="-1"><span class="n">2</span>筆芯是什麼</button>
+      <button role="tab" id="tab-3" aria-controls="panel-3" aria-selected="false" tabindex="-1"><span class="n">3</span>怎麼公平比</button>
+      <button role="tab" id="tab-4" aria-controls="panel-4" aria-selected="false" tabindex="-1"><span class="n">4</span>動手做準備</button>
+      <button role="tab" id="tab-5" aria-controls="panel-5" aria-selected="false" tabindex="-1"><span class="n">5</span>變因：長度</button>
+      <button role="tab" id="tab-6" aria-controls="panel-6" aria-selected="false" tabindex="-1"><span class="n">6</span>變因：粗細軟硬</button>
+      <button role="tab" id="tab-7" aria-controls="panel-7" aria-selected="false" tabindex="-1"><span class="n">7</span>對照與延伸</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ 頁籤 1 ============ -->
+<section class="panel wrap" id="panel-1" role="tabpanel" aria-labelledby="tab-1" tabindex="0">
+  <p class="eyebrow">情境與提問</p>
+  <h2>鉛筆芯，能讓燈亮起來嗎？</h2>
+  <p class="lead">把電路留一個缺口，換上不同的東西夾進去。哪些會讓燈亮？哪些不會？亮的程度一樣嗎？</p>
+
+  <div class="grid2">
+    <div class="card">
+      <figure class="fig">
+        <svg id="svgTester" viewBox="0 0 720 380" role="img" aria-labelledby="testerTitle testerDesc">
+          <title id="testerTitle">材料通電測試電路</title>
+          <desc id="testerDesc">電池盒經導線接到一顆 LED，電路中間留有缺口，可換上銅線、鉛筆芯或木製鉛筆桿。銅線接上時燈最亮，鉛筆芯接上時燈微亮，木桿接上時燈不亮。</desc>
+
+          <!-- 桌面 -->
+          <rect x="0" y="318" width="720" height="62" fill="#EDE6D8"/>
+          <line x1="0" y1="318" x2="720" y2="318" stroke="#D8CEBB" stroke-width="2"/>
+
+          <!-- 電池盒 -->
+          <g transform="translate(250,262)">
+            <rect x="0" y="0" width="220" height="56" rx="7" fill="#4A5058"/>
+            <rect x="8" y="8" width="98" height="40" rx="6" fill="#2F343A"/>
+            <rect x="114" y="8" width="98" height="40" rx="6" fill="#2F343A"/>
+            <!-- 電池 -->
+            <rect x="12" y="12" width="90" height="32" rx="4" fill="#C9A227"/>
+            <rect x="94" y="19" width="10" height="18" rx="2" fill="#B0B6BC"/>
+            <rect x="118" y="12" width="90" height="32" rx="4" fill="#C9A227"/>
+            <rect x="200" y="19" width="10" height="18" rx="2" fill="#B0B6BC"/>
+            <text x="110" y="70" text-anchor="middle" font-size="13" fill="#565E66">電池盒（3 V）</text>
+            <text x="-10" y="-8" text-anchor="middle" font-size="17" font-weight="700" fill="#B3261E">＋</text>
+            <text x="230" y="-8" text-anchor="middle" font-size="19" font-weight="700" fill="#1D2126">－</text>
+          </g>
+
+          <!-- 電路：電池＋ → 左上 → 缺口 → 右上 → LED → 回電池－ -->
+          <!-- 左：電池正極往上到缺口左側 -->
+          <path d="M250 288 L110 288 L110 120 L268 120" fill="none" stroke="var(--copper)" stroke-width="5" stroke-linecap="round"/>
+          <!-- 右：缺口右側往右、往下到 LED -->
+          <path d="M452 120 L610 120 L610 176" fill="none" stroke="var(--copper)" stroke-width="5" stroke-linecap="round"/>
+          <!-- LED 下方接回電池負極 -->
+          <path d="M610 224 L610 288 L470 288" fill="none" stroke="var(--copper)" stroke-width="5" stroke-linecap="round"/>
+
+          <!-- 電流流動示意 -->
+          <g id="testerFlow" opacity="0">
+            <path class="flowline" d="M250 288 L110 288 L110 120 L268 120" fill="none" stroke="var(--current)" stroke-width="3" stroke-linecap="round"/>
+            <path class="flowline" d="M452 120 L610 120 L610 176 M610 224 L610 288 L470 288" fill="none" stroke="var(--current)" stroke-width="3" stroke-linecap="round"/>
+          </g>
+
+          <!-- 鱷魚夾 -->
+          <g fill="#8A939C">
+            <path d="M262 108 l16 0 l6 12 l-6 12 l-16 0 z"/>
+            <path d="M458 108 l-16 0 l-6 12 l6 12 l16 0 z"/>
+          </g>
+
+          <!-- 待測物插槽 -->
+          <g id="specimenSlot" transform="translate(360,120)"></g>
+
+          <!-- LED（串在右側導線上） -->
+          <g transform="translate(610,200)">
+            <g id="ledGlow" opacity="0">
+              <circle cx="0" cy="-8" r="52" fill="#FF5A4D" opacity=".16"/>
+              <circle cx="0" cy="-8" r="32" fill="#FF7A5A" opacity=".3"/>
+            </g>
+            <line x1="0" y1="-24" x2="0" y2="-14" stroke="#9AA4AE" stroke-width="3"/>
+            <line x1="0" y1="14" x2="0" y2="24" stroke="#9AA4AE" stroke-width="3"/>
+            <path d="M-16 8 v-16 a16 16 0 0 1 32 0 v16 z" id="ledBody" fill="#E23B2E" stroke="#A8261B" stroke-width="1.5"/>
+            <rect x="-19" y="8" width="38" height="6" rx="2" fill="#C9302A"/>
+            <text x="-26" y="-16" text-anchor="end" font-size="12" fill="#B3261E">長腳＝＋</text>
+            <text x="0" y="46" text-anchor="middle" font-size="13" fill="#565E66">LED</text>
+          </g>
+
+          <!-- 缺口標示 -->
+          <text x="360" y="72" text-anchor="middle" font-size="14" font-weight="600" fill="#1D2126">把待測物夾在這裡</text>
+          <line x1="360" y1="80" x2="360" y2="98" stroke="#8A939C" stroke-width="1.5"/>
+        </svg>
+        <figcaption class="figcap">示意圖：電路各元件比例經過調整以利觀察，實際器材大小不同。</figcaption>
+      </figure>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>選一個夾進去試試</h3>
+        <div class="seg" role="group" aria-label="選擇待測物" id="specimenPicker">
+          <button type="button" data-spec="copper" aria-pressed="false">銅線</button>
+          <button type="button" data-spec="lead" aria-pressed="false">2B 筆芯</button>
+          <button type="button" data-spec="wood" aria-pressed="false">木製筆桿</button>
+        </div>
+        <div class="readout" style="margin-top:14px">
+          <div class="r"><span class="k">燈的樣子</span><div class="v" id="t1Bright" style="font-size:1.05rem">還沒選</div></div>
+          <div class="r only-junior"><span class="k">電流</span><div class="v"><span id="t1Cur">—</span> <span class="u">mA</span></div></div>
+        </div>
+        <p id="t1Say" class="note" aria-live="polite">點上面三個按鈕，看看燈會怎麼變。</p>
+      </div>
+
+      <div class="card">
+        <h3>換你來問</h3>
+        <p style="font-size:.93rem">你剛剛看到筆芯「有點亮但不太亮」。關於筆芯導電，你想到什麼可以「動手測測看」的問題？</p>
+        <label class="sr-only" for="t1Question">你的探究問題</label>
+        <textarea id="t1Question" rows="3" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit" placeholder="例如：如果筆芯換長一點，燈會不會更暗？"></textarea>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn btn-primary btn-sm" id="t1Save">存下我的問題</button>
+          <span id="t1SaveMsg" style="font-size:.85rem;color:var(--ink-soft)" aria-live="polite"></span>
+        </div>
+        <details style="margin-top:10px">
+          <summary>卡住了？看三個句型（不是答案）</summary>
+          <ul style="font-size:.9rem;margin:.5em 0 0;padding-left:1.2em">
+            <li>如果把 <b>______</b> 改變，<b>______</b> 會不會跟著改變？</li>
+            <li>哪一種 <b>______</b> 讓燈最亮？為什麼？</li>
+            <li>兩支筆芯只差在 <b>______</b>，結果會一樣嗎？</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>先講清楚三件事</h3>
+    <div class="myths">
+      <div class="myth">
+        <div class="x">✗ 常見誤解</div><p>鉛筆芯裡面有「鉛」。</p>
+        <div class="o">✓ 正確</div><p>鉛筆芯<b>完全不含鉛</b>，主要是<b>石墨</b>加上<b>黏土</b>。名字裡的「鉛」是歷史誤稱。</p>
+      </div>
+      <div class="myth">
+        <div class="x">✗ 常見誤解</div><p>黑色的東西就會導電。</p>
+        <div class="o">✓ 正確</div><p>黑色跟導電沒有關係。黑色墨水、黑色塑膠都不導電；筆芯會導電是因為裡面的<b>石墨</b>。</p>
+      </div>
+      <div class="myth">
+        <div class="x">✗ 常見誤解</div><p>會導電的一定是金屬。</p>
+        <div class="o">✓ 正確</div><p>石墨<b>不是金屬</b>，卻能導電。導電與否要看內部結構，不是看它屬不屬於金屬。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 頁籤 2 ============ -->
+<section class="panel wrap" id="panel-2" role="tabpanel" aria-labelledby="tab-2" tabindex="0" hidden>
+  <p class="eyebrow">材料的祕密</p>
+  <h2>筆芯為什麼會導電？</h2>
+  <p class="lead">答案藏在石墨的「一層一層」裡。</p>
+
+  <details class="only-junior">
+    <summary>先複習：電流、電壓、電阻（60 秒）</summary>
+    <ul style="font-size:.93rem">
+      <li><b>電流 I</b>：單位時間通過的電量，單位安培 A（常用 mA）。</li>
+      <li><b>電壓 V</b>：推動電流的「推力」，單位伏特 V。</li>
+      <li><b>電阻 R</b>：電流通過的「阻礙程度」，單位歐姆 Ω。</li>
+      <li><b>歐姆定律</b>：<b>R = V ÷ I</b>。同樣的電壓下，電阻越大，電流越小。</li>
+      <li><b>串聯</b>：電流只有一條路，各段電阻相加。</li>
+    </ul>
+  </details>
+
+  <div class="card">
+    <div class="btn-row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="seg" role="group" aria-label="選擇要看的內容" id="graphiteStage">
+        <button type="button" data-stage="1" aria-pressed="true">① 石墨怎麼排列</button>
+        <button type="button" data-stage="2" aria-pressed="false">② 電子怎麼跑</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-sm" id="gPlay" aria-pressed="true">⏸ 暫停</button>
+        <button class="btn btn-sm" id="gReplay">↻ 重播</button>
+      </div>
+    </div>
+
+    <figure class="fig">
+      <svg id="svgGraphite" viewBox="0 0 720 400" role="img" aria-labelledby="gTitle gDesc">
+        <title id="gTitle">石墨的層狀結構與層內電子流動</title>
+        <desc id="gDesc">側視圖顯示三層碳原子。同一層內原子間距離短、以共價鍵相連；層與層之間的距離約為層內原子間距的 2.4 倍，只靠微弱的作用力相疊。藍色電子沿著層的方向左右移動，不會跨越到別層。</desc>
+
+        <rect x="0" y="0" width="720" height="400" fill="#FBFCFD"/>
+
+        <!-- 三層碳原子。層內間距 40px 對應 0.142 nm；層間 94px 對應 0.335 nm（比例 2.36） -->
+        <g id="gLayers">
+          <!-- 第一層 y=90 -->
+          <g>
+            <line x1="90" y1="90" x2="630" y2="90" stroke="#8A939C" stroke-width="2"/>
+            <g fill="var(--graphite)">
+              <circle cx="90" cy="90" r="9"/><circle cx="130" cy="90" r="9"/><circle cx="170" cy="90" r="9"/><circle cx="210" cy="90" r="9"/><circle cx="250" cy="90" r="9"/><circle cx="290" cy="90" r="9"/><circle cx="330" cy="90" r="9"/><circle cx="370" cy="90" r="9"/><circle cx="410" cy="90" r="9"/><circle cx="450" cy="90" r="9"/><circle cx="490" cy="90" r="9"/><circle cx="530" cy="90" r="9"/><circle cx="570" cy="90" r="9"/><circle cx="610" cy="90" r="9"/>
+            </g>
+          </g>
+          <!-- 第二層 y=184 -->
+          <g>
+            <line x1="90" y1="184" x2="630" y2="184" stroke="#8A939C" stroke-width="2"/>
+            <g fill="var(--graphite)">
+              <circle cx="110" cy="184" r="9"/><circle cx="150" cy="184" r="9"/><circle cx="190" cy="184" r="9"/><circle cx="230" cy="184" r="9"/><circle cx="270" cy="184" r="9"/><circle cx="310" cy="184" r="9"/><circle cx="350" cy="184" r="9"/><circle cx="390" cy="184" r="9"/><circle cx="430" cy="184" r="9"/><circle cx="470" cy="184" r="9"/><circle cx="510" cy="184" r="9"/><circle cx="550" cy="184" r="9"/><circle cx="590" cy="184" r="9"/>
+            </g>
+          </g>
+          <!-- 第三層 y=278 -->
+          <g>
+            <line x1="90" y1="278" x2="630" y2="278" stroke="#8A939C" stroke-width="2"/>
+            <g fill="var(--graphite)">
+              <circle cx="90" cy="278" r="9"/><circle cx="130" cy="278" r="9"/><circle cx="170" cy="278" r="9"/><circle cx="210" cy="278" r="9"/><circle cx="250" cy="278" r="9"/><circle cx="290" cy="278" r="9"/><circle cx="330" cy="278" r="9"/><circle cx="370" cy="278" r="9"/><circle cx="410" cy="278" r="9"/><circle cx="450" cy="278" r="9"/><circle cx="490" cy="278" r="9"/><circle cx="530" cy="278" r="9"/><circle cx="570" cy="278" r="9"/><circle cx="610" cy="278" r="9"/>
+            </g>
+          </g>
+        </g>
+
+        <!-- 層間微弱作用力（虛線） -->
+        <g stroke="#C3CAD1" stroke-width="1.5" stroke-dasharray="3 5">
+          <line x1="170" y1="99" x2="190" y2="175"/><line x1="330" y1="99" x2="350" y2="175"/><line x1="490" y1="99" x2="510" y2="175"/>
+          <line x1="190" y1="193" x2="170" y2="269"/><line x1="350" y1="193" x2="330" y2="269"/><line x1="510" y1="193" x2="490" y2="269"/>
+        </g>
+
+        <!-- 尺寸標註（放在圖左側安全區，不壓到原子） -->
+        <g stroke="#565E66" stroke-width="1.4" fill="none">
+          <line x1="62" y1="90" x2="62" y2="184"/>
+          <line x1="56" y1="90" x2="68" y2="90"/><line x1="56" y1="184" x2="68" y2="184"/>
+        </g>
+        <text x="76" y="130" font-size="15" font-weight="600" fill="#3A3F44">層間</text>
+        <text x="76" y="150" font-size="15" font-weight="600" fill="#3A3F44">0.335 nm</text>
+
+        <g stroke="#565E66" stroke-width="1.4" fill="none">
+          <line x1="90" y1="322" x2="130" y2="322"/>
+          <line x1="90" y1="316" x2="90" y2="328"/><line x1="130" y1="316" x2="130" y2="328"/>
+        </g>
+        <text x="110" y="346" text-anchor="middle" font-size="15" font-weight="600" fill="#3A3F44">層內 0.142 nm</text>
+
+        <!-- 電子 -->
+        <g id="gElectrons" opacity="0"></g>
+
+        <!-- 說明條 -->
+        <rect x="0" y="358" width="720" height="42" fill="#F2F5F8"/>
+        <text id="gCaption" x="360" y="384" text-anchor="middle" font-size="14.5" fill="#1D2126">同一層的碳原子連得很緊，層與層之間卻隔得很開，只是輕輕疊著。</text>
+      </svg>
+      <figcaption class="figcap">側視示意圖。原子大小為方便觀察而放大，但<b>層內間距與層間距離維持真實比例（0.142 : 0.335 nm）</b>。</figcaption>
+    </figure>
+  </div>
+
+  <div class="grid-half">
+    <div class="card">
+      <h3>筆芯 ＝ 石墨 ＋ 黏土</h3>
+      <p class="only-elem">石墨負責<b>導電</b>，黏土負責<b>撐住不斷掉</b>。黏土放得越多，筆芯越硬、顏色越淡，電也越不好通過。</p>
+      <p class="only-junior">石墨提供可移動的電子，是導電的來源；黏土是絕緣的，只提供結構強度。黏土比例越高，導電路徑被切斷得越多，<b>電阻越大</b>。</p>
+      <figure class="fig">
+        <svg viewBox="0 0 700 266" role="img" aria-label="鉛筆硬度階梯圖。由左到右為 4B、2B、B、HB、H、2H，黏土含量分別約為 16%、22%、30%、36%、50.5%、53%。每一根長條代表一支筆芯的完整成分，下段深灰為石墨、上段淺褐為黏土。越往右黏土越多、筆芯越硬、顏色越淡、越不容易導電。">
+          <g id="hardnessBars"></g>
+          <line x1="60" y1="196" x2="676" y2="196" stroke="#8A939C" stroke-width="1.5"/>
+          <text x="60" y="248" font-size="13" fill="#565E66">← 石墨多、軟、黑、好導電</text>
+          <text x="676" y="248" text-anchor="end" font-size="13" fill="#565E66">黏土多、硬、淡、不好導電 →</text>
+          <text x="30" y="70" font-size="12.5" fill="#565E66" transform="rotate(-90 30 70)">成分比例</text>
+        </svg>
+        <div class="legend" style="margin-top:2px">
+          <span><i style="background:var(--graphite)"></i>石墨（導電）</span>
+          <span><i style="background:var(--clay)"></i>黏土（不導電）</span>
+        </div>
+        <figcaption class="figcap">每根長條代表一支筆芯的完整成分。黏土百分比為市售鉛筆常見配方參考值，不同品牌會有差異。</figcaption>
+      </figure>
+    </div>
+
+    <div class="card">
+      <h3 class="only-elem">所以呢？</h3>
+      <h3 class="only-junior">推論</h3>
+      <div class="note">
+        <p class="only-elem"><strong>電比較好走的路：</strong>沿著石墨的「層」走。層裡面有可以自由跑動的電子，一推就動；要跨到別層就困難得多。</p>
+        <p class="only-junior"><strong>導電機制：</strong>每個碳原子有一個電子沒有參與鍵結，在層內形成可自由移動的<b>離域電子</b>。這些電子沿層面移動形成電流；跨層方向因為只有微弱作用力連接，導電性差很多。</p>
+      </div>
+      <p style="margin-top:12px">既然電是「沿著石墨走」，那麼——</p>
+      <ul>
+        <li>路變<b>長</b>，會怎樣？<span class="only-elem">（頁籤 5 動手試）</span><span class="only-junior">（頁籤 5 量量看）</span></li>
+        <li>路變<b>寬</b>（筆芯變粗），會怎樣？<span style="color:var(--ink-soft)">（頁籤 6）</span></li>
+        <li>路上<b>黏土變多</b>（換硬筆芯），會怎樣？<span style="color:var(--ink-soft)">（頁籤 6）</span></li>
+      </ul>
+      <p style="font-size:.9rem;color:var(--ink-soft)">先自己猜一猜，等一下再驗證。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 頁籤 3 ============ -->
+<section class="panel wrap" id="panel-3" role="tabpanel" aria-labelledby="tab-3" tabindex="0" hidden>
+  <p class="eyebrow">規劃研究</p>
+  <h2>怎麼比才公平？</h2>
+  <p class="lead">如果換了長度，又順手換了一支更粗的筆芯，結果變了，你怎麼知道是誰造成的？</p>
+
+  <div class="card">
+    <h3>把下面的卡片分到正確的欄位</h3>
+    <p style="font-size:.92rem;color:var(--ink-soft)">
+      操作方式：先<b>點一張卡片</b>選起來，再<b>點一個欄位</b>放進去。用鍵盤也可以：<kbd>Tab</kbd> 移動、<kbd>Enter</kbd> 選取與放置。放錯了可以再點回來。
+    </p>
+
+    <h4 style="margin-top:14px">待分類的卡片</h4>
+    <div class="pool" id="varPool"></div>
+
+    <div class="sorter" style="margin-top:16px">
+      <div class="bin" data-bin="iv">
+        <h4>要改變的<span class="only-junior">（操作變因）</span></h4>
+        <p class="hint">我自己動手去改的那一個</p>
+        <div class="bin-items"></div>
+      </div>
+      <div class="bin" data-bin="cv">
+        <h4>要固定的<span class="only-junior">（控制變因）</span></h4>
+        <p class="hint">從頭到尾都不能動的</p>
+        <div class="bin-items"></div>
+      </div>
+      <div class="bin" data-bin="dv">
+        <h4>要測量的<span class="only-junior">（應變變因）</span></h4>
+        <p class="hint">我去看、去讀出來的結果</p>
+        <div class="bin-items"></div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn btn-primary" id="varCheck">檢查我的分類</button>
+      <button class="btn" id="varReset">全部重來</button>
+      <span id="varMsg" style="font-size:.9rem" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>把它寫成一句話</h3>
+    <p id="varSentence" style="font-size:1.05rem;background:#F2F5F8;padding:14px;border-radius:10px" aria-live="polite">
+      固定 <b>______</b>，改變 <b>______</b>，測量 <b>______</b>。
+    </p>
+    <p style="font-size:.9rem;color:var(--ink-soft)">分類全部正確後，這句話會自動填好。這就是你等一下要做的實驗。</p>
+  </div>
+</section>
+
+<!-- ============ 頁籤 4 ============ -->
+<section class="panel wrap" id="panel-4" role="tabpanel" aria-labelledby="tab-4" tabindex="0" hidden>
+  <p class="eyebrow">動手做</p>
+  <h2>器材、接線與安全</h2>
+  <p class="lead">這一頁請在<b>開始接線之前</b>看完。筆芯通電會發熱，接錯會燙傷或燒斷。</p>
+
+  <div class="danger">
+    <h3>⚠️ 安全規範（做之前一定要看）</h3>
+    <ol>
+      <li><strong>絕對不可以</strong>把筆芯直接接在電池的兩端。那樣會短路，筆芯會迅速<strong>發燙、發紅、燒斷</strong>，可能燙傷或點燃紙張。電路裡<strong>一定要有 LED 或限流電阻</strong>。</li>
+      <li>電源最多 <strong>3 V</strong>（兩顆 3 號電池）。<strong>不可以</strong>用鋰電池、充電電池、行動電源或變壓器。</li>
+      <li>每次通電<strong>不超過 10 秒</strong>，讀完數值就把電池拔掉。</li>
+      <li>通電後筆芯<strong>可能燙手</strong>，斷電後等一下再拆。</li>
+      <li>筆芯容易斷，斷面很尖。折斷時<strong>用布包住</strong>，碎屑馬上清乾淨，<strong>不可以</strong>揉眼睛或放進嘴巴。</li>
+      <li>桌面不要放紙屑、酒精等易燃物。</li>
+      <li>全程<strong>要有老師在場</strong>。<span class="only-elem">國小組的電池接線由老師完成。</span></li>
+      <li>做完<strong>要洗手</strong>。</li>
+    </ol>
+  </div>
+
+  <div class="grid2" style="margin-top:18px">
+    <div class="card">
+      <h3>接線步驟</h3>
+      <div class="btn-row" style="margin-bottom:12px">
+        <button class="btn btn-sm" id="wirePrev">← 上一步</button>
+        <button class="btn btn-sm btn-primary" id="wireNext">下一步 →</button>
+        <button class="btn btn-sm" id="wireReplay">↻ 從頭</button>
+        <span id="wireStepNo" style="font-size:.9rem;font-weight:600;color:var(--ink-soft)"></span>
+      </div>
+      <figure class="fig">
+        <svg id="svgWiring" viewBox="0 0 720 340" role="img" aria-labelledby="wTitle wDesc">
+          <title id="wTitle">實驗電路接線步驟圖</title>
+          <desc id="wDesc" aria-live="polite">依步驟顯示電池盒、限流電阻、LED、鱷魚夾與筆芯的連接順序。</desc>
+          <rect x="0" y="0" width="720" height="340" fill="#FBFCFD"/>
+          <g id="wireLayers"></g>
+        </svg>
+        <figcaption class="figcap" id="wireCap">步驟說明會隨著上方按鈕更新。</figcaption>
+      </figure>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>器材清單（每組）</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>器材</th><th>規格</th><th>數量</th></tr></thead>
+            <tbody>
+              <tr><td>自動鉛筆筆芯</td><td>0.5 mm 2B（主力）</td><td>3</td></tr>
+              <tr><td>不同粗細筆芯</td><td>0.7 mm、2.0 mm</td><td>各 2</td></tr>
+              <tr><td>不同軟硬筆芯</td><td>0.5 mm 的 2H、HB、2B、4B</td><td>各 2</td></tr>
+              <tr><td>電池盒＋電池</td><td>3 號碳鋅或鹼性 ×2（3 V）</td><td>1</td></tr>
+              <tr><td>LED</td><td>5 mm 紅光</td><td>2</td></tr>
+              <tr><td>限流電阻</td><td>見下方教師說明</td><td>2</td></tr>
+              <tr><td>鱷魚夾導線</td><td>—</td><td>4</td></tr>
+              <tr class="only-junior"><td>三用電表</td><td>電阻檔／直流電流檔</td><td>1</td></tr>
+              <tr><td>直尺、白紙、2B 鉛筆</td><td>—</td><td>各 1</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>出發前檢查</h3>
+        <ul class="checklist" id="safetyList">
+          <li><label><input type="checkbox"> 我看完上面的安全規範了</label></li>
+          <li><label><input type="checkbox"> 電路裡有 LED 或限流電阻，筆芯沒有直接接電池兩端</label></li>
+          <li><label><input type="checkbox"> 用的是 3 號電池，不是鋰電池或行動電源</label></li>
+          <li><label><input type="checkbox"> 桌上沒有紙屑和易燃物</label></li>
+          <li><label><input type="checkbox"> 直尺、記錄表、筆都準備好了</label></li>
+          <li><label><input type="checkbox"> 老師已經確認我們可以開始</label></li>
+        </ul>
+        <p id="safetyMsg" class="note" style="margin-top:12px" aria-live="polite">還有項目沒有勾選。</p>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="worksheet.html" target="_blank" rel="noopener">🖨 開啟並列印學習單</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="teacher">
+    <h4>給老師：限流電阻與數值校正（課前務必預試）</h4>
+    <p>本教材的模擬值是<b>示範用的模型值</b>。市售筆芯的實測電阻，因品牌、配方與接觸情況差異極大——文獻上從「0.7 mm HB、6 cm 約 2 Ω」到「整支鉛筆 20–30 Ω」都有。<b>請務必在課前用實際器材量過一次</b>，再決定要不要調整學習單上的預期範圍。</p>
+      <p><b>國小版看 LED 亮度時，亮度差異是否明顯，取決於「筆芯電阻」與「限流電阻」的相對大小。</b>限流電阻挑太大，換筆芯時燈幾乎不會變，活動就失去意義。建議先用 <b>47 Ω</b> 試，並準備以下備案：</p>
+    <ol style="margin:.4em 0;padding-left:1.3em">
+      <li>改用<b>較硬的筆芯（2H）</b>——電阻較大，亮度落差最明顯。本教材國小版的長度活動就預設用 2H。</li>
+      <li>把筆芯<b>長度拉到 8–10 cm</b>，擴大變化範圍。</li>
+      <li>降低限流電阻（但要確認 LED 電流不超過額定值，紅光 5 mm LED 一般約 20 mA）。</li>
+      <li>亮度真的分不出來時，改用<b>三用電表讀電流</b>，把「比亮度」換成「比數字」。</li>
+    </ol>
+    <p style="margin-bottom:0">實測與模擬不一致是正常的，那正是頁籤 7「對照」要討論的材料，不必為了吻合而修改數據。</p>
+  </div>
+</section>
+
+<!-- ============ 頁籤 5 ============ -->
+<section class="panel wrap" id="panel-5" role="tabpanel" aria-labelledby="tab-5" tabindex="0" hidden>
+  <p class="eyebrow">變因探究 一</p>
+  <h2>筆芯越長，會怎麼樣？</h2>
+
+  <div class="steps" id="steps5" role="list" aria-label="探究流程"></div>
+
+  <!-- ① 預測 -->
+  <div class="card predict">
+    <h3>① 先預測，再看模擬</h3>
+    <p class="only-elem">如果把夾子拉開，讓電要走的筆芯<b>變長</b>，燈會變亮還是變暗？</p>
+    <p class="only-junior">如果把兩個夾子之間的筆芯<b>長度加倍</b>，量到的電阻會怎麼變？請寫下你的預測與理由。</p>
+    <div class="only-elem choices" role="group" aria-label="預測選項" id="t5Choices">
+      <button class="btn" data-p="brighter">燈會變亮</button>
+      <button class="btn" data-p="same">亮度不會變</button>
+      <button class="btn" data-p="dimmer">燈會變暗</button>
+    </div>
+    <label class="sr-only" for="t5PredictText">你的預測與理由</label>
+    <textarea id="t5PredictText" class="only-junior" placeholder="我預測電阻會……，因為……"></textarea>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn btn-primary" id="t5Lock">確定，解鎖模擬</button>
+      <span id="t5PredictMsg" style="font-size:.88rem;color:var(--ink-soft)" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <!-- ② 模擬 -->
+  <div class="locked-host is-locked" id="t5SimHost">
+    <div class="lock-msg">請先在上面寫下你的預測 🔒</div>
+    <div class="locked">
+      <div class="grid2">
+        <div class="card">
+          <h3>② 模擬：拉開夾子看看</h3>
+          <figure class="fig">
+            <svg id="svgLen" viewBox="0 0 720 330" role="img" aria-labelledby="lenTitle lenDesc">
+              <title id="lenTitle">筆芯長度模擬裝置</title>
+              <desc id="lenDesc" aria-live="polite">直尺上放著一根筆芯，兩個鱷魚夾夾住筆芯的兩處，夾子之間的距離就是通電的長度。</desc>
+              <rect x="0" y="0" width="720" height="330" fill="#FBFCFD"/>
+              <g id="lenScene"></g>
+            </svg>
+            <figcaption class="figcap" id="lenCap"></figcaption>
+          </figure>
+          <div class="ctrl" style="margin-top:12px">
+            <label for="lenSlider">兩個夾子之間的筆芯長度：<b><span id="lenVal">5.0</span> 公分</b></label>
+            <input type="range" id="lenSlider" min="1" max="10" step="0.5" value="5">
+          </div>
+          <div class="readout">
+            <div class="r only-elem"><span class="k">燈的亮度</span><div class="v" id="lenBright" style="font-size:1.05rem">—</div></div>
+            <div class="r only-junior"><span class="k">電阻 R</span><div class="v"><span id="lenR">—</span> <span class="u">Ω</span></div></div>
+            <div class="r only-junior"><span class="k">電流 I</span><div class="v"><span id="lenI">—</span> <span class="u">mA</span></div></div>
+            <div class="r only-junior"><span class="k">電壓 V</span><div class="v">3.00 <span class="u">V</span></div></div>
+          </div>
+          <p style="font-size:.83rem;color:var(--ink-soft);margin:0">
+            <span class="only-elem">國小版固定使用 <b>0.5 mm 2H</b> 筆芯（比較硬、比較不好導電），亮度變化最看得出來。</span>
+            <span class="only-junior">固定使用 <b>0.5 mm HB</b> 筆芯。</span>
+            數值為<b>模擬值</b>，實際量測會不同。
+          </p>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn btn-primary" id="lenRec">＋ 記錄這一筆</button>
+            <button class="btn" id="lenClear">清空表格</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h3>資料表</h3>
+            <div class="table-scroll">
+              <table id="lenTable">
+                <thead><tr><th>長度 (cm)</th><th class="only-junior">電阻 (Ω)</th><th class="only-elem">亮度等級</th><th>刪除</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p id="lenTableMsg" style="font-size:.86rem;color:var(--ink-soft);margin:8px 0 0">還沒有資料。拉動滑桿後按「記錄這一筆」。</p>
+          </div>
+          <div class="card">
+            <h3 class="only-junior">R－長度 關係圖</h3>
+            <h3 class="only-elem">亮度－長度 圖</h3>
+            <div class="chart-wrap"><svg id="lenChart" viewBox="0 0 420 300" role="img" aria-labelledby="lenChartDesc"><desc id="lenChartDesc" aria-live="polite">尚無資料</desc></svg></div>
+            <div class="btn-row only-junior" style="margin-top:8px">
+              <button class="btn btn-sm" id="lenFit" disabled>加上最適直線</button>
+              <span id="lenFitMsg" style="font-size:.86rem;color:var(--ink-soft)"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>看完模擬，回答這兩題</h3>
+        <ol style="margin:0;padding-left:1.3em">
+          <li class="only-elem">長度從 2 公分變成 4 公分（變成兩倍），燈的亮度變化<b>大不大</b>？往哪個方向變？</li>
+          <li class="only-elem">你剛剛的預測對了嗎？如果不對，你現在會怎麼說？</li>
+          <li class="only-junior">長度變成 2 倍時，電阻大約變成幾倍？</li>
+          <li class="only-junior">把資料點連起來，這條線<b>會不會通過原點</b>？「通過原點」代表什麼意思？</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 實作 -->
+  <div class="offline" style="margin-bottom:18px">
+    <h3>③ 放下裝置，動手做 🔌</h3>
+    <p>模擬只是預演。<b>真正的數據要自己量。</b>請照頁籤 4 的步驟接好電路，然後：</p>
+    <ol>
+      <li>把筆芯放在直尺上，兩個鱷魚夾夾住筆芯，量好夾子之間的距離。</li>
+      <li>從 <b>2 公分</b>開始，每次增加 <b>2 公分</b>，做到 <b>10 公分</b>，一共 5 筆。</li>
+      <li class="only-elem">每一筆都記下燈的亮度（很亮／亮／有點暗／暗／很暗），並和同組同學核對。</li>
+      <li class="only-junior">每一筆都用三用電表讀電阻，或讀電流後用 R = V ÷ I 算出來，記到學習單上。</li>
+      <li>每次通電不超過 10 秒，讀完就斷電。</li>
+      <li>做完把數據帶到<b>頁籤 7</b>，跟模擬對照。</li>
+    </ol>
+    <div class="btn-row">
+      <a class="btn" href="worksheet.html" target="_blank" rel="noopener">🖨 列印學習單</a>
+      <button class="btn btn-primary" id="t5GoCompare">做完了，去對照 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 頁籤 6 ============ -->
+<section class="panel wrap" id="panel-6" role="tabpanel" aria-labelledby="tab-6" tabindex="0" hidden>
+  <p class="eyebrow">變因探究 二</p>
+  <h2>換粗一點、換軟一點，又會怎麼樣？</h2>
+  <p class="lead">這一次<b>長度固定在 8.0 公分</b>，只改變筆芯本身。</p>
+
+  <div class="steps" id="steps6" role="list" aria-label="探究流程"></div>
+
+  <div class="card predict">
+    <h3>① 先預測</h3>
+    <p>把 0.5 mm 的筆芯換成 2.0 mm 的粗筆芯（<span class="only-elem">變粗很多</span><span class="only-junior">截面積約變成 16 倍</span>），結果會怎麼變？</p>
+    <div class="choices" role="group" aria-label="預測選項" id="t6Choices">
+      <button class="btn" data-p="up">更亮／電阻更小</button>
+      <button class="btn" data-p="same">幾乎不變</button>
+      <button class="btn" data-p="down">更暗／電阻更大</button>
+    </div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn btn-primary" id="t6Lock">確定，解鎖模擬</button>
+      <span id="t6PredictMsg" style="font-size:.88rem;color:var(--ink-soft)" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div class="locked-host is-locked" id="t6SimHost">
+    <div class="lock-msg">請先在上面選一個預測 🔒</div>
+    <div class="locked">
+      <div class="grid2">
+        <div class="card">
+          <h3>② 模擬：換筆芯</h3>
+          <figure class="fig">
+            <svg id="svgLead" viewBox="0 0 720 300" role="img" aria-labelledby="leadTitle leadDesc">
+              <title id="leadTitle">三種粗細筆芯的真實比例剖面圖</title>
+              <desc id="leadDesc" aria-live="polite">0.5、0.7、2.0 公釐筆芯的截面依真實比例並排，剖面中的深灰顆粒代表石墨、淺褐顆粒代表黏土。</desc>
+              <rect x="0" y="0" width="720" height="300" fill="#FBFCFD"/>
+              <g id="leadScene"></g>
+            </svg>
+            <figcaption class="figcap">三個圓的直徑依 0.5 : 0.7 : 2.0 的<b>真實比例</b>繪製。</figcaption>
+          </figure>
+
+          <div class="ctrl" style="margin-top:12px">
+            <label id="labDia">筆芯粗細（直徑）</label>
+            <div class="seg" role="group" aria-labelledby="labDia" id="diaPicker">
+              <button type="button" data-d="0.5" aria-pressed="true">0.5 mm</button>
+              <button type="button" data-d="0.7" aria-pressed="false">0.7 mm</button>
+              <button type="button" data-d="2.0" aria-pressed="false">2.0 mm</button>
+            </div>
+          </div>
+          <div class="ctrl">
+            <label id="labHard">筆芯軟硬（黏土比例）</label>
+            <div class="seg" role="group" aria-labelledby="labHard" id="hardPicker">
+              <button type="button" data-h="4B" aria-pressed="false">4B</button>
+              <button type="button" data-h="2B" aria-pressed="true">2B</button>
+              <button type="button" data-h="B" aria-pressed="false">B</button>
+              <button type="button" data-h="HB" aria-pressed="false">HB</button>
+              <button type="button" data-h="H" aria-pressed="false">H</button>
+              <button type="button" data-h="2H" aria-pressed="false">2H</button>
+            </div>
+          </div>
+
+          <div class="readout">
+            <div class="r"><span class="k">截面積</span><div class="v"><span id="leadA">—</span> <span class="u">mm²</span></div></div>
+            <div class="r only-elem"><span class="k">燈的亮度</span><div class="v" id="leadBright" style="font-size:1.05rem">—</div></div>
+            <div class="r only-junior"><span class="k">電阻 R</span><div class="v"><span id="leadR">—</span> <span class="u">Ω</span></div></div>
+            <div class="r only-junior"><span class="k">電流 I</span><div class="v"><span id="leadI">—</span> <span class="u">mA</span></div></div>
+          </div>
+          <p style="font-size:.83rem;color:var(--ink-soft);margin:0">長度固定 8.0 cm。數值為<b>模擬值</b>。</p>
+        </div>
+
+        <div>
+          <div class="card">
+            <h3>比較：換粗細（同為 2B）</h3>
+            <div class="chart-wrap"><svg id="diaChart" viewBox="0 0 420 260" role="img" aria-labelledby="diaChartDesc"><desc id="diaChartDesc">粗細比較圖</desc></svg></div>
+            <div class="btn-row only-junior" style="margin-top:8px">
+              <button class="btn btn-sm" id="diaMode" aria-pressed="false">切換：R 對 1/截面積</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>比較：換軟硬（同為 0.5 mm）</h3>
+            <div class="chart-wrap"><svg id="hardChart" viewBox="0 0 420 260" role="img" aria-labelledby="hardChartDesc"><desc id="hardChartDesc">軟硬比較圖</desc></svg></div>
+            <div class="note" style="margin-top:10px;font-size:.88rem">
+              <strong>注意：</strong>軟硬這一組<b>不是</b>整齊的正比或反比關係，<b>不要</b>硬拉一條直線。它只告訴我們一個趨勢：黏土越多越不好導電。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>看完模擬，回答</h3>
+        <ol style="margin:0;padding-left:1.3em">
+          <li class="only-junior">0.5 mm 換成 2.0 mm，直徑變成 4 倍，<b>截面積</b>變成幾倍？電阻變成幾分之一？跟模擬一致嗎？</li>
+          <li class="only-elem">哪一支筆芯讓燈最亮？粗的還是細的？軟的還是硬的？</li>
+          <li>如果要自己做一個「讓燈很暗」的筆芯電阻，你會挑什麼樣的筆芯、夾多長？</li>
+          <li>你剛才的預測對了嗎？哪裡需要修正？</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="offline">
+    <h3>③ 放下裝置，動手做 🔌</h3>
+    <ol>
+      <li>長度<b>固定 8 公分</b>，依序換 0.5、0.7、2.0 mm 三種粗細，各記一筆。</li>
+      <li>再回到 0.5 mm，依序換 4B、2B、HB、2H 四種軟硬，各記一筆。</li>
+      <li>每換一次都<b>重新量長度</b>——這是最容易出錯的地方。</li>
+      <li>每次通電不超過 10 秒。</li>
+    </ol>
+    <p style="margin-bottom:0"><b>提醒：</b>2.0 mm 筆芯電阻很小，如果用三用電表量，接觸的好壞會嚴重影響讀數。夾緊一點，多量幾次。</p>
+  </div>
+</section>
+
+<!-- ============ 頁籤 7 ============ -->
+<section class="panel wrap" id="panel-7" role="tabpanel" aria-labelledby="tab-7" tabindex="0" hidden>
+  <p class="eyebrow">論證與延伸</p>
+  <h2>把實測的數據，跟模擬放在一起</h2>
+  <p class="lead">兩條線不一樣，不代表你做錯了。<b>差在哪裡、為什麼差</b>，才是這一節最重要的事。</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>④ 輸入你實際量到的數據</h3>
+      <p style="font-size:.92rem;color:var(--ink-soft)">把頁籤 5 動手做的長度組數據打進來。<span class="only-elem">亮度等級請用 1～5：1＝很暗、5＝很亮。</span><span class="only-junior">電阻請填歐姆（Ω）。</span></p>
+      <div class="btn-row" style="align-items:flex-end;gap:10px">
+        <div>
+          <label for="obsLen" style="display:block;font-size:.85rem;font-weight:600">長度 (cm)</label>
+          <input type="number" id="obsLen" min="0.5" max="20" step="0.5" value="2" style="width:100px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit">
+        </div>
+        <div>
+          <label for="obsVal" style="display:block;font-size:.85rem;font-weight:600"><span class="only-elem">亮度等級 (1-5)</span><span class="only-junior">電阻 (Ω)</span></label>
+          <input type="number" id="obsVal" min="0" step="0.1" style="width:120px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit">
+        </div>
+        <button class="btn btn-primary" id="obsAdd">＋ 加入</button>
+        <button class="btn" id="obsClear">清空</button>
+      </div>
+      <div class="table-scroll" style="margin-top:12px">
+        <table id="obsTable">
+          <thead><tr><th>長度 (cm)</th><th><span class="only-elem">實測亮度</span><span class="only-junior">實測 R (Ω)</span></th><th><span class="only-elem">模擬亮度</span><span class="only-junior">模擬 R (Ω)</span></th><th>差</th><th>刪除</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="obsMsg" style="font-size:.86rem;color:var(--ink-soft);margin:8px 0 0" aria-live="polite">還沒有實測資料。</p>
+    </div>
+
+    <div class="card">
+      <h3>疊圖對照</h3>
+      <div class="chart-wrap"><svg id="obsChart" viewBox="0 0 420 300" role="img" aria-labelledby="obsChartDesc"><desc id="obsChartDesc" aria-live="polite">尚無實測資料</desc></svg></div>
+      <div class="legend">
+        <span><i style="background:#8A939C"></i>模擬（虛線）</span>
+        <span><i style="background:var(--current);border-radius:50%"></i>你的實測（圓點）</span>
+      </div>
+      <div id="obsGuide" class="note" style="margin-top:12px">輸入至少 3 筆資料後，這裡會出現引導問題。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>差異可能從哪裡來？</h3>
+    <p style="font-size:.92rem;color:var(--ink-soft)">先自己想，再點開看看有沒有漏掉的。</p>
+    <details><summary>夾子與接觸</summary><p style="margin:.6em 0 0">鱷魚夾沒夾緊、夾在筆芯的漆面或不平的地方，都會多出一段「接觸電阻」。這會讓每一筆數據<b>整體偏高</b>，圖上的線會整條往上平移，延長後不會通過原點。</p></details>
+    <details><summary>長度量錯</summary><p style="margin:.6em 0 0">要量的是「<b>兩個夾子接觸點之間</b>」的距離，不是整根筆芯的長度。夾子有寬度，量到夾子外緣就會偏長。</p></details>
+    <details><summary>筆芯本身不均勻</summary><p style="margin:.6em 0 0">筆芯是壓製出來的，粗細和成分不會完全一致。同一盒不同支、甚至同一支的不同段，量起來都可能不同。</p></details>
+    <details><summary>通電太久，筆芯發熱</summary><p style="margin:.6em 0 0">電流通過會讓筆芯發熱，溫度改變時量到的數值也會跟著飄。這是為什麼規定<b>每次通電不超過 10 秒</b>——除了安全，也是為了數據穩定。</p></details>
+    <details><summary>電池電力下降</summary><p style="margin:.6em 0 0">做到後面，電池電壓會比一開始低一點。如果先做短的、後做長的，可能會讓「越長越暗」的趨勢<b>看起來比實際更明顯</b>。可以做完再回頭重測第一筆檢查看看。</p></details>
+  </div>
+
+  <div class="card">
+    <h3>延伸實作：在紙上畫一個電阻</h3>
+    <p class="lead" style="font-size:.98rem">用 2B 鉛筆在紙上塗一條粗黑的線，就是一條「電線」。把探針沿著線移動，電要走的距離就改變了——這正是<b>可變電阻</b>的原理。</p>
+    <div class="grid2">
+      <figure class="fig card" style="margin:0">
+        <svg id="svgPaper" viewBox="0 0 720 320" role="img" aria-labelledby="paperTitle paperDesc">
+          <title id="paperTitle">紙上鉛筆線路互動</title>
+          <desc id="paperDesc" aria-live="polite">白紙上有一條用鉛筆塗黑的粗線，左端固定接線，右端有一個可以左右移動的探針。探針離左端越遠，LED 越暗。</desc>
+          <g id="paperScene"></g>
+        </svg>
+        <figcaption class="figcap">拖曳探針，或用鍵盤左右方向鍵移動。數值為<b>模擬值</b>；實際紙上線路的電阻差異非常大，取決於塗得多厚多密。</figcaption>
+      </figure>
+      <div>
+        <div class="card">
+          <div class="ctrl">
+            <label for="paperSlider">探針位置（距離左端）：<b><span id="paperVal">2.0</span> 公分</b></label>
+            <input type="range" id="paperSlider" min="1" max="8" step="0.5" value="2">
+          </div>
+          <div class="readout">
+            <div class="r"><span class="k">燈的亮度</span><div class="v" id="paperBright" style="font-size:1.05rem">—</div></div>
+            <div class="r only-junior"><span class="k">約略電阻</span><div class="v"><span id="paperR">—</span> <span class="u">Ω</span></div></div>
+          </div>
+          <div class="note">
+            <strong>怎麼塗才會通：</strong>用<b>軟的筆芯（2B 以上）</b>、<b>用力塗厚</b>、<b>同一個地方來回塗很多次</b>。塗得薄或斷斷續續，電就過不去。
+          </div>
+          <div class="note" style="margin-top:10px;border-left-color:#8A939C;background:#F2F5F8">
+            <b>為什麼整體都這麼暗？</b>紙上鉛筆線的電阻比筆芯<b>大很多</b>——同樣長度可能差到幾十倍甚至上百倍。所以這個電路本來就只能讓 LED 微微發光。<b>這不是做失敗</b>，而是這個延伸活動真實的樣子；要看得更清楚，可以改用三用電表量電阻，或把線塗得更厚更黑。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>生活中，到處都是這個原理</h3>
+    <div class="apps">
+      <div class="app">
+        <svg viewBox="0 0 220 110" role="img" aria-label="碳膜電阻器示意圖：陶瓷芯棒外覆一層碳膜，碳膜被切成螺旋溝槽以加長電流路徑，兩端有金屬引線與色環標示。">
+          <rect x="0" y="0" width="220" height="110" fill="#FBFCFD"/>
+          <line x1="8" y1="55" x2="52" y2="55" stroke="#9AA4AE" stroke-width="4"/>
+          <line x1="168" y1="55" x2="212" y2="55" stroke="#9AA4AE" stroke-width="4"/>
+          <rect x="52" y="32" width="116" height="46" rx="18" fill="#D9C9A8" stroke="#B9A783" stroke-width="1.5"/>
+          <g stroke="#3A3F44" stroke-width="3" fill="none" opacity=".8">
+            <path d="M66 32 L78 78"/><path d="M84 32 L96 78"/><path d="M102 32 L114 78"/><path d="M120 32 L132 78"/><path d="M138 32 L150 78"/>
+          </g>
+          <rect x="60" y="32" width="7" height="46" fill="#8B4513"/>
+          <rect x="154" y="32" width="7" height="46" fill="#C9A227"/>
+          <text x="110" y="100" text-anchor="middle" font-size="11" fill="#565E66">切成螺旋，把路徑拉長</text>
+        </svg>
+        <h4>碳膜電阻器</h4>
+        <p>電器裡最常見的電阻，用的就是碳。把碳膜切成螺旋，路徑變長、電阻變大——跟你拉長筆芯是同一件事。</p>
+      </div>
+      <div class="app">
+        <svg viewBox="0 0 220 110" role="img" aria-label="音量旋鈕內部示意圖：一圈電阻材料，旋鈕帶動接觸片沿著這圈移動，改變電流需要通過的長度。">
+          <rect x="0" y="0" width="220" height="110" fill="#FBFCFD"/>
+          <path d="M110 88 A44 44 0 1 1 154 44" fill="none" stroke="#3A3F44" stroke-width="12" stroke-linecap="round"/>
+          <circle cx="110" cy="44" r="16" fill="#8A939C"/>
+          <line x1="110" y1="44" x2="140" y2="24" stroke="#E8720C" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="140" cy="24" r="5" fill="var(--current)"/>
+          <text x="110" y="106" text-anchor="middle" font-size="11" fill="#565E66">轉動＝改變通過的長度</text>
+        </svg>
+        <h4>音量旋鈕（可變電阻）</h4>
+        <p>轉動旋鈕時，接觸片在一圈電阻材料上滑動，改變電流要走的長度——就是你剛剛在紙上做的事。</p>
+      </div>
+      <div class="app">
+        <svg viewBox="0 0 220 110" role="img" aria-label="觸控筆筆尖示意圖：導電材質的筆尖接觸螢幕，形成可導電的接觸點。">
+          <rect x="0" y="0" width="220" height="110" fill="#FBFCFD"/>
+          <rect x="30" y="72" width="160" height="16" rx="4" fill="#CFD6DC" stroke="#B0B8BF"/>
+          <path d="M96 72 L110 30 L124 72 z" fill="#4A5058"/>
+          <circle cx="110" cy="34" r="9" fill="#3A3F44"/>
+          <g stroke="var(--current)" stroke-width="2.5" fill="none" opacity=".9">
+            <path d="M110 43 v10"/><path d="M102 46 l5 8"/><path d="M118 46 l-5 8"/>
+          </g>
+          <text x="110" y="104" text-anchor="middle" font-size="11" fill="#565E66">導電筆尖</text>
+        </svg>
+        <h4>觸控筆的筆尖</h4>
+        <p>觸控螢幕靠偵測導電體來判斷你點了哪裡。所以觸控筆的筆尖必須是導電材質——木頭做的筆尖，螢幕完全沒反應。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>素養闖關</h3>
+    <p style="font-size:.92rem;color:var(--ink-soft)">共 8 題。答錯不會直接給答案，回饋會告訴你該回頭看哪裡。</p>
+    <div id="quizBox"></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn" id="quizReset">重新作答</button>
+      <span class="score" id="quizScore" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>探究成果卡</h3>
+    <p style="font-size:.92rem;color:var(--ink-soft)">把你這一路的紀錄整理成一張卡片，可以截圖交出去。</p>
+    <button class="btn btn-primary" id="makeCard">產生我的成果卡</button>
+    <div id="resultCard" class="resultcard" style="margin-top:14px;display:none"></div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>筆芯導電的探究與實作</b>　v1.0.0　｜　適用：國小高年級・國中</p>
+    <p style="margin:0 0 6px">本教材的模擬數值為<b>教學用模型值</b>，用於呈現正確的變化趨勢，不等同任何特定品牌筆芯的實測值。實體實驗請依教材內的安全規範，並由教師在場督導。</p>
+    <p style="margin:0"><a href="worksheet.html">列印學習單</a>　｜　資料來源與查核紀錄見專案 <code>docs/references.md</code></p>
+  </div>
+</footer>
+
+<script>
+"use strict";
+/* =========================================================
+   共用工具
+   ========================================================= */
+const $  = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, txt){
+  const n = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) n.setAttribute(k, attrs[k]);
+  if(txt!=null) n.textContent = txt;
+  return n;
+}
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem("plc:"+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem("plc:"+k, JSON.stringify(v)); }catch(e){} }
+};
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* =========================================================
+   物理模型（模擬值；相對趨勢正確，絕對值僅供教學）
+   ========================================================= */
+const RHO_HB = 7.8e-5;               // Ω·m，HB 0.5mm 筆芯的模型電阻率
+const HARDNESS = {                    // clay：常見配方黏土百分比參考值；k：相對電阻率倍率（示意）
+  "4B":{clay:16,   k:0.55, label:"4B"},
+  "2B":{clay:22,   k:0.70, label:"2B"},
+  "B" :{clay:30,   k:0.85, label:"B"},
+  "HB":{clay:36,   k:1.00, label:"HB"},
+  "H" :{clay:50.5, k:1.60, label:"H"},
+  "2H":{clay:53,   k:1.90, label:"2H"}
+};
+const HARD_ORDER = ["4B","2B","B","HB","H","2H"];
+const VCC = 3.0, VF = 1.9, RLIM = 47; // 電源、LED 順向壓降、限流電阻
+
+function areaMM2(d){ return Math.PI*Math.pow(d/2,2); }          // mm²
+function areaM2(d){ return Math.PI*Math.pow(d/2000,2); }        // m²
+// 可重現的擾動：同樣的條件永遠得到同樣的值
+function jitter(seed){
+  let h = 2166136261;
+  for(let i=0;i<seed.length;i++){ h ^= seed.charCodeAt(i); h = Math.imul(h,16777619); }
+  return (((h>>>0) % 2001)/1000 - 1) * 0.015;   // ±1.5%
+}
+function leadR(Lcm, dmm, grade, contact){
+  const base = RHO_HB*HARDNESS[grade].k * (Lcm/100) / areaM2(dmm);
+  const R = base * (1 + jitter(Lcm+"|"+dmm+"|"+grade));
+  return R + (contact ? 1.5 : 0);
+}
+function ledMA(R){ return Math.max(0,(VCC-VF)/(RLIM+R))*1000; }
+// 學生可分辨的 5 個亮度等級。門檻對應筆芯活動的實際工作範圍（約 9–23 mA）
+const BRIGHT = [
+  {min:20, t:"很亮",   lvl:5},
+  {min:17, t:"亮",     lvl:4},
+  {min:14, t:"有點暗", lvl:3},
+  {min:11, t:"暗",     lvl:2},
+  {min:0,  t:"很暗",   lvl:1}
+];
+function bright(mA){ return BRIGHT.find(b=> mA >= b.min) || BRIGHT[BRIGHT.length-1]; }
+// 紙上鉛筆線路的電阻比筆芯大一到兩個數量級，整體都很暗，
+// 因此用自己的一組描述詞，讓「拉遠會更暗」仍然可比較。
+function paperBright(mA){
+  if(mA >= 5)   return "看得到，但很暗";
+  if(mA >= 3)   return "更暗了";
+  if(mA >= 1.5) return "非常暗";
+  return "幾乎熄掉";
+}
+function fmt(n,d){ return Number(n).toFixed(d==null?1:d); }
+
+/* =========================================================
+   版本切換
+   ========================================================= */
+let MODE = store.get("mode","elem");
+function applyMode(m){
+  MODE = m;
+  document.body.classList.toggle("mode-elem", m==="elem");
+  document.body.classList.toggle("mode-junior", m==="junior");
+  $("#modeElem").setAttribute("aria-pressed", m==="elem");
+  $("#modeJunior").setAttribute("aria-pressed", m==="junior");
+  store.set("mode", m);
+  // 各模組重繪（實測資料依版本各自載入）
+  loadObs();
+  restoreT5(); restoreT6();
+  renderTester(); renderLen(); renderLead(); renderObs(); renderPaper(); buildQuiz(); renderVarSentence();
+}
+$("#modeElem").addEventListener("click", ()=>applyMode("elem"));
+$("#modeJunior").addEventListener("click", ()=>applyMode("junior"));
+
+/* =========================================================
+   頁籤
+   ========================================================= */
+const tabs = $$('[role="tab"]');
+const panels = tabs.map(t=> document.getElementById(t.getAttribute("aria-controls")));
+function selectTab(i, focus){
+  tabs.forEach((t,j)=>{
+    const on = i===j;
+    t.setAttribute("aria-selected", on);
+    t.tabIndex = on ? 0 : -1;
+    panels[j].hidden = !on;
+  });
+  if(focus) tabs[i].focus();
+  stopHidden();
+}
+tabs.forEach((t,i)=>{
+  t.addEventListener("click", ()=> selectTab(i));
+  t.addEventListener("keydown", e=>{
+    let n = null;
+    if(e.key==="ArrowRight") n = (i+1)%tabs.length;
+    else if(e.key==="ArrowLeft") n = (i-1+tabs.length)%tabs.length;
+    else if(e.key==="Home") n = 0;
+    else if(e.key==="End") n = tabs.length-1;
+    if(n!==null){ e.preventDefault(); selectTab(n,true); }
+  });
+});
+// 切換頁籤時停掉看不見的動畫
+function stopHidden(){
+  const g = $("#svgGraphite");
+  if(g && panels[1].hidden){ g.classList.add("is-paused"); }
+  else if(g && gPlaying){ g.classList.remove("is-paused"); }
+  const t = $("#svgTester");
+  if(t && panels[0].hidden) t.classList.add("is-paused"); else if(t) t.classList.remove("is-paused");
+}
+
+/* =========================================================
+   頁籤 1：材料測試
+   ========================================================= */
+const SPECS = {
+  copper:{ name:"銅線",       R:0.05, note:"銅是很好的導體，幾乎不擋電流，燈最亮。" },
+  lead:  { name:"2B 筆芯",    R:22,   note:"筆芯會導電，但比銅困難得多，所以燈亮得比較弱。這個「有點難通過」就是我們要探究的東西。" },
+  wood:  { name:"木製筆桿",   R:null, note:"木頭是絕緣體，電流過不去，燈完全不亮。" }
+};
+let curSpec = null;
+function specimenSVG(kind){
+  const g = el("g",{});
+  if(kind==="copper"){
+    g.appendChild(el("rect",{x:-92,y:-7,width:184,height:14,rx:7,fill:"var(--copper)"}));
+    g.appendChild(el("rect",{x:-92,y:-7,width:184,height:5,rx:2.5,fill:"#D89A5E"}));
+    const t=el("text",{x:0,y:-18,"text-anchor":"middle","font-size":"13",fill:"#565E66"},"銅線"); g.appendChild(t);
+  }else if(kind==="lead"){
+    g.appendChild(el("rect",{x:-92,y:-6,width:184,height:12,rx:6,fill:"var(--graphite)"}));
+    g.appendChild(el("rect",{x:-92,y:-6,width:184,height:4,rx:2,fill:"#5A6169"}));
+    g.appendChild(el("text",{x:0,y:-18,"text-anchor":"middle","font-size":"13",fill:"#565E66"},"2B 筆芯"));
+  }else if(kind==="wood"){
+    g.appendChild(el("rect",{x:-92,y:-11,width:184,height:22,rx:5,fill:"var(--wood)"}));
+    g.appendChild(el("rect",{x:-92,y:-11,width:184,height:6,rx:3,fill:"#BC9160"}));
+    for(let x=-80;x<86;x+=22) g.appendChild(el("line",{x1:x,y1:-11,x2:x+8,y2:11,stroke:"#8A6539","stroke-width":"1.2"}));
+    g.appendChild(el("text",{x:0,y:-22,"text-anchor":"middle","font-size":"13",fill:"#565E66"},"木製筆桿"));
+  }else{
+    g.appendChild(el("rect",{x:-92,y:-8,width:184,height:16,rx:8,fill:"none",stroke:"#C3CAD1","stroke-width":"2","stroke-dasharray":"6 5"}));
+    g.appendChild(el("text",{x:0,y:5,"text-anchor":"middle","font-size":"13",fill:"#9AA4AE"},"（缺口）"));
+  }
+  return g;
+}
+function renderTester(){
+  const slot = $("#specimenSlot"); if(!slot) return;
+  slot.textContent = "";
+  slot.appendChild(specimenSVG(curSpec));
+  const s = curSpec ? SPECS[curSpec] : null;
+  const glow = $("#ledGlow"), flow = $("#testerFlow"), body = $("#ledBody");
+  if(!s){
+    glow.setAttribute("opacity","0"); flow.setAttribute("opacity","0"); body.setAttribute("fill","#E23B2E");
+    $("#t1Bright").textContent = "還沒選"; $("#t1Cur").textContent = "—";
+    $("#t1Say").textContent = "點上面三個按鈕，看看燈會怎麼變。";
+    return;
+  }
+  if(s.R===null){
+    glow.setAttribute("opacity","0"); flow.setAttribute("opacity","0"); body.setAttribute("fill","#8E3B33");
+    $("#t1Bright").textContent = "不亮"; $("#t1Cur").textContent = "0.0";
+  }else{
+    const mA = ledMA(s.R), b = bright(mA);
+    glow.setAttribute("opacity", String(Math.min(1, mA/22)));
+    flow.setAttribute("opacity", "1");
+    body.setAttribute("fill", mA>15 ? "#FF4B3A" : "#D63A2E");
+    $("#t1Bright").textContent = b.t; $("#t1Cur").textContent = fmt(mA,1);
+  }
+  $("#t1Say").innerHTML = "<strong>"+s.name+"：</strong>"+s.note;
+}
+$("#specimenPicker").addEventListener("click", e=>{
+  const b = e.target.closest("button[data-spec]"); if(!b) return;
+  curSpec = b.dataset.spec;
+  $$("#specimenPicker button").forEach(x=> x.setAttribute("aria-pressed", x===b));
+  renderTester();
+});
+$("#t1Save").addEventListener("click", ()=>{
+  const v = $("#t1Question").value.trim();
+  if(!v){ $("#t1SaveMsg").textContent = "先寫一句再存喔。"; return; }
+  store.set("question", v); $("#t1SaveMsg").textContent = "已存下，成果卡會用到。";
+});
+$("#t1Question").value = store.get("question","");
+
+/* =========================================================
+   頁籤 2：石墨結構
+   ========================================================= */
+let gStage = 1, gPlaying = !reduceMotion;
+function buildElectrons(){
+  const box = $("#gElectrons"); if(!box) return;
+  box.textContent = "";
+  // 電子必須畫在「層線上、原子之間」，不能畫在層與層的空隙，
+  // 否則會和「電子不會跨到別層」互相矛盾。
+  const rows = [{y:90,off:20},{y:184,off:0},{y:278,off:20}];
+  rows.forEach((row,ri)=>{
+    for(let i=0;i<4;i++){
+      const x0 = 110 + row.off + i*130;
+      const g = el("g",{class:"electron", style:"--dx:130px; animation-delay:"+(-(i*0.8 + ri*0.35))+"s"});
+      g.appendChild(el("circle",{cx:x0, cy:row.y, r:6.5, fill:"#fff"}));
+      g.appendChild(el("circle",{cx:x0, cy:row.y, r:5, fill:"var(--electron)"}));
+      box.appendChild(g);
+    }
+  });
+  // 方向箭頭（與電子移動方向一致，往右）
+  const a = el("g",{});
+  a.appendChild(el("path",{d:"M300 44 L420 44", stroke:"var(--electron)","stroke-width":"2.5",fill:"none"}));
+  a.appendChild(el("path",{d:"M420 44 l-9 -5 l0 10 z", fill:"var(--electron)"}));
+  a.appendChild(el("text",{x:360,y:34,"text-anchor":"middle","font-size":"13",fill:"var(--electron)"},"電子沿著層移動"));
+  box.appendChild(a);
+}
+function setStage(s){
+  gStage = s;
+  $$("#graphiteStage button").forEach(b=> b.setAttribute("aria-pressed", b.dataset.stage==String(s)));
+  const box = $("#gElectrons"), cap = $("#gCaption"), desc = $("#gDesc");
+  if(s===1){
+    box.setAttribute("opacity","0");
+    cap.textContent = "同一層的碳原子連得很緊，層與層之間卻隔得很開，只是輕輕疊著。";
+    desc.textContent = "側視圖顯示三層碳原子。同一層內原子間距 0.142 奈米、以共價鍵相連；層與層之間距離 0.335 奈米，約為層內間距的 2.4 倍。";
+  }else{
+    box.setAttribute("opacity","1");
+    cap.textContent = MODE==="elem"
+      ? "電子只在自己那一層裡左右跑，不會跳到別層去 —— 所以電順著層走最容易。"
+      : "層內的離域電子可自由移動形成電流；跨層方向只有微弱作用力連接，導電性差很多。";
+    desc.textContent = "藍色電子沿著每一層水平移動，不會跨越到別層，代表石墨的導電方向以層面為主。";
+  }
+}
+$("#graphiteStage").addEventListener("click", e=>{
+  const b = e.target.closest("button[data-stage]"); if(!b) return;
+  setStage(Number(b.dataset.stage));
+});
+$("#gPlay").addEventListener("click", ()=>{
+  gPlaying = !gPlaying;
+  $("#svgGraphite").classList.toggle("is-paused", !gPlaying);
+  $("#gPlay").textContent = gPlaying ? "⏸ 暫停" : "▶ 播放";
+  $("#gPlay").setAttribute("aria-pressed", gPlaying);
+});
+$("#gReplay").addEventListener("click", ()=>{ buildElectrons(); gPlaying=true; $("#svgGraphite").classList.remove("is-paused"); $("#gPlay").textContent="⏸ 暫停"; });
+
+function buildHardnessBars(){
+  const g = $("#hardnessBars"); if(!g) return;
+  g.textContent = "";
+  // 每根長條 = 一支筆芯的 100% 成分：下段石墨、上段黏土
+  const x0 = 60, w = 88, gap = 15, base = 196, h = 140;
+  HARD_ORDER.forEach((k,i)=>{
+    const d = HARDNESS[k];
+    const x = x0 + i*(w+gap);
+    const clayH = d.clay/100*h;              // 依真實百分比，不做額外縮放
+    g.appendChild(el("rect",{x:x, y:base-h,     width:w, height:h-clayH, fill:"var(--graphite)"}));
+    g.appendChild(el("rect",{x:x, y:base-clayH, width:w, height:clayH,   fill:"var(--clay)"}));
+    g.appendChild(el("rect",{x:x, y:base-h,     width:w, height:h, fill:"none", stroke:"#B9BFC5","stroke-width":"1"}));
+    g.appendChild(el("text",{x:x+w/2, y:base+18, "text-anchor":"middle","font-size":"14","font-weight":"700",fill:"#1D2126"}, d.label));
+    g.appendChild(el("text",{x:x+w/2, y:base-h-8, "text-anchor":"middle","font-size":"12",fill:"#565E66"}, "黏土 "+d.clay+"%"));
+  });
+}
+
+/* =========================================================
+   頁籤 3：變因分類
+   ========================================================= */
+const VARS = [
+  {id:"v1", t:"筆芯的長度",        bin:"iv", why:"這是我們這次要動手改的東西。"},
+  {id:"v2", t:"筆芯的粗細",        bin:"cv", why:"如果粗細也跟著換，就分不出是長度還是粗細造成的。"},
+  {id:"v3", t:"筆芯的軟硬（2B/HB）", bin:"cv", why:"換硬度等於換材料配方，一定要固定。"},
+  {id:"v4", t:"電池的電壓",        bin:"cv", why:"電壓變了，燈本來就會變亮變暗，跟筆芯無關。"},
+  {id:"v5", t:"夾子夾的鬆緊",      bin:"cv", why:"夾得鬆會多出接觸電阻，每次都要夾一樣緊。"},
+  {id:"v6", t:"燈泡的亮度",        bin:"dv", why:"這是我們用眼睛去看、去讀出來的結果。", elemOnly:true},
+  {id:"v7", t:"量到的電阻",        bin:"dv", why:"這是我們用電表讀出來的結果。", juniorOnly:true},
+  {id:"v8", t:"通電的時間長短",    bin:"cv", why:"通電久了筆芯會發熱，數值會飄，要固定在 10 秒內。"}
+];
+let varState = {};   // id -> bin
+let varPicked = null;
+function activeVars(){ return VARS.filter(v=> !(v.elemOnly && MODE!=="elem") && !(v.juniorOnly && MODE!=="junior")); }
+function makeChip(v){
+  const b = document.createElement("button");
+  b.type="button"; b.className="chip"; b.textContent = v.t;
+  b.dataset.id = v.id; b.setAttribute("aria-pressed","false");
+  b.addEventListener("click", ()=>{
+    if(varPicked === v.id){ varPicked = null; }
+    else { varPicked = v.id; }
+    renderVars();
+  });
+  return b;
+}
+function renderVars(){
+  const pool = $("#varPool"); if(!pool) return;
+  pool.textContent = "";
+  $$(".bin .bin-items").forEach(n=> n.textContent="");
+  activeVars().forEach(v=>{
+    const chip = makeChip(v);
+    if(varPicked===v.id) chip.setAttribute("aria-pressed","true");
+    const b = varState[v.id];
+    if(b) $('.bin[data-bin="'+b+'"] .bin-items').appendChild(chip);
+    else pool.appendChild(chip);
+  });
+  $$(".bin").forEach(n=> n.classList.toggle("is-target", !!varPicked));
+  if(pool.children.length===0){
+    const p = document.createElement("p");
+    p.style.cssText="font-size:.88rem;color:var(--ink-soft);margin:0;grid-column:1/-1";
+    p.textContent = "卡片都分完了，按「檢查我的分類」。";
+    pool.appendChild(p);
+  }
+}
+$$(".bin").forEach(bin=>{
+  bin.addEventListener("click", e=>{
+    if(e.target.closest(".chip")) return;   // 點卡片是取消選取，不是放置
+    if(!varPicked) return;
+    varState[varPicked] = bin.dataset.bin;
+    varPicked = null; renderVars(); $("#varMsg").textContent="";
+  });
+});
+$("#varCheck").addEventListener("click", ()=>{
+  const list = activeVars();
+  const unplaced = list.filter(v=> !varState[v.id]);
+  if(unplaced.length){ $("#varMsg").textContent = "還有 "+unplaced.length+" 張卡片沒分類。"; return; }
+  let wrong = 0, firstWhy = "";
+  list.forEach(v=>{
+    const chip = $('.chip[data-id="'+v.id+'"]');
+    if(!chip) return;
+    const ok = varState[v.id]===v.bin;
+    chip.classList.toggle("ok", ok); chip.classList.toggle("ng", !ok);
+    if(!ok){ wrong++; if(!firstWhy) firstWhy = v.t; }
+  });
+  if(wrong===0){
+    $("#varMsg").innerHTML = '<b style="color:var(--ok)">全部正確！</b> 下面的句子已經幫你填好了。';
+    store.set("varsOK", true);
+  }else{
+    $("#varMsg").innerHTML = '<b style="color:var(--warn)">有 '+wrong+' 張放錯了。</b>想一想「'+firstWhy+'」：它是你<b>主動去改</b>的，還是<b>被測出來</b>的，還是<b>從頭到尾都不能動</b>的？';
+  }
+  renderVarSentence();
+});
+$("#varReset").addEventListener("click", ()=>{
+  varState = {}; varPicked = null; store.set("varsOK", false);
+  $$(".chip").forEach(c=> c.classList.remove("ok","ng"));
+  $("#varMsg").textContent=""; renderVars(); renderVarSentence();
+});
+function renderVarSentence(){
+  const box = $("#varSentence"); if(!box) return;
+  const list = activeVars();
+  const allRight = list.length>0 && list.every(v=> varState[v.id]===v.bin);
+  if(!allRight){
+    box.innerHTML = "固定 <b>______</b>，改變 <b>______</b>，測量 <b>______</b>。";
+    return;
+  }
+  const cv = list.filter(v=>v.bin==="cv").map(v=>v.t).join("、");
+  const iv = list.filter(v=>v.bin==="iv").map(v=>v.t).join("、");
+  const dv = list.filter(v=>v.bin==="dv").map(v=>v.t).join("、");
+  box.innerHTML = "固定 <b>"+cv+"</b>，改變 <b>"+iv+"</b>，測量 <b>"+dv+"</b>。";
+  store.set("sentence", box.textContent);
+}
+
+/* =========================================================
+   頁籤 4：接線步驟 + 安全檢核
+   ========================================================= */
+const WIRE_STEPS = [
+  { cap:"步驟 1：準備電池盒。裝入兩顆 3 號電池（3 V）。先<b>不要</b>接上任何線。", layers:["batt"] },
+  { cap:"步驟 2：從電池盒的<b>正極</b>接一條鱷魚夾導線，串上<b>限流電阻</b>。這顆電阻是保護 LED 用的，不能省略。", layers:["batt","res"] },
+  { cap:"步驟 3：接上 <b>LED</b>。注意極性——<b>長腳接正極那一側</b>，接反了不會亮。", layers:["batt","res","led"] },
+  { cap:"步驟 4：把<b>筆芯</b>用兩個鱷魚夾夾住，接進電路。夾子之間的距離，就是我們要量的長度。", layers:["batt","res","led","lead"] },
+  { cap:"步驟 5：接回電池<b>負極</b>，電路完成。<b>通電不超過 10 秒</b>，讀完數值馬上斷開。", layers:["batt","res","led","lead","close","flow"] }
+];
+let wireStep = 0;
+function drawWiring(){
+  const g = $("#wireLayers"); if(!g) return;
+  g.textContent = "";
+  const on = WIRE_STEPS[wireStep].layers;
+  const has = n=> on.indexOf(n)>=0;
+
+  // 導線骨架（依步驟逐段出現）
+  const wire = (d, show)=>{
+    if(!show) return;
+    g.appendChild(el("path",{d:d, fill:"none", stroke:"var(--copper)","stroke-width":"5","stroke-linecap":"round"}));
+  };
+  // 電池盒
+  if(has("batt")){
+    const b = el("g",{transform:"translate(60,210)"});
+    b.appendChild(el("rect",{x:0,y:0,width:180,height:50,rx:7,fill:"#4A5058"}));
+    b.appendChild(el("rect",{x:10,y:9,width:76,height:32,rx:4,fill:"#C9A227"}));
+    b.appendChild(el("rect",{x:94,y:9,width:76,height:32,rx:4,fill:"#C9A227"}));
+    b.appendChild(el("text",{x:90,y:68,"text-anchor":"middle","font-size":"13",fill:"#565E66"},"電池盒 3 V"));
+    b.appendChild(el("text",{x:-14,y:-8,"text-anchor":"middle","font-size":"16","font-weight":"700",fill:"#B3261E"},"＋"));
+    b.appendChild(el("text",{x:194,y:-8,"text-anchor":"middle","font-size":"18","font-weight":"700",fill:"#1D2126"},"－"));
+    g.appendChild(b);
+  }
+  wire("M62 204 L62 150 L170 150", has("res"));
+  // 限流電阻
+  if(has("res")){
+    const r = el("g",{transform:"translate(170,132)"});
+    r.appendChild(el("rect",{x:0,y:0,width:74,height:36,rx:14,fill:"#D9C9A8",stroke:"#B9A783","stroke-width":"1.5"}));
+    r.appendChild(el("rect",{x:12,y:0,width:6,height:36,fill:"#8B4513"}));
+    r.appendChild(el("rect",{x:26,y:0,width:6,height:36,fill:"#1D2126"}));
+    r.appendChild(el("rect",{x:40,y:0,width:6,height:36,fill:"#C9A227"}));
+    r.appendChild(el("text",{x:37,y:-10,"text-anchor":"middle","font-size":"12.5",fill:"#565E66"},"限流電阻"));
+    g.appendChild(r);
+  }
+  wire("M244 150 L330 150", has("led"));
+  // LED
+  if(has("led")){
+    const L = el("g",{transform:"translate(360,150)"});
+    if(has("flow")){
+      L.appendChild(el("circle",{cx:0,cy:-6,r:34,fill:"#FF5A4D",opacity:".18"}));
+      L.appendChild(el("circle",{cx:0,cy:-6,r:20,fill:"#FF7A5A",opacity:".32"}));
+    }
+    L.appendChild(el("path",{d:"M-14 4 v-16 a14 14 0 0 1 28 0 v16 z",fill:"#E23B2E",stroke:"#A8261B","stroke-width":"1.4"}));
+    L.appendChild(el("rect",{x:-17,y:4,width:34,height:5,rx:2,fill:"#C9302A"}));
+    L.appendChild(el("line",{x1:-7,y1:9,x2:-7,y2:28,stroke:"#9AA4AE","stroke-width":"3"}));
+    L.appendChild(el("line",{x1:7,y1:9,x2:7,y2:22,stroke:"#9AA4AE","stroke-width":"3"}));
+    L.appendChild(el("text",{x:0,y:-30,"text-anchor":"middle","font-size":"12.5",fill:"#565E66"},"LED"));
+    // 引線標籤放在 LED 輪廓外，短引線指向左腳，不壓到燈體
+    L.appendChild(el("line",{x1:-24,y1:22,x2:-9,y2:18,stroke:"#B3261E","stroke-width":"1.2"}));
+    L.appendChild(el("text",{x:-28,y:26,"text-anchor":"end","font-size":"12",fill:"#B3261E"},"長腳＝＋"));
+    g.appendChild(L);
+  }
+  wire("M390 150 L470 150", has("lead"));
+  // 筆芯與夾子
+  if(has("lead")){
+    const p = el("g",{transform:"translate(470,150)"});
+    p.appendChild(el("rect",{x:0,y:-6,width:150,height:12,rx:6,fill:"var(--graphite)"}));
+    p.appendChild(el("rect",{x:0,y:-6,width:150,height:4,rx:2,fill:"#5A6169"}));
+    // 夾子
+    [10,130].forEach(x=>{
+      p.appendChild(el("path",{d:"M"+(x-8)+" -14 l16 0 l6 14 l-6 14 l-16 0 z", fill:"#8A939C"}));
+    });
+    p.appendChild(el("g",{})).appendChild(el("line",{x1:10,y1:24,x2:130,y2:24,stroke:"#565E66","stroke-width":"1.4"}));
+    p.appendChild(el("text",{x:70,y:44,"text-anchor":"middle","font-size":"12.5",fill:"#565E66"},"要量的長度"));
+    p.appendChild(el("text",{x:75,y:-24,"text-anchor":"middle","font-size":"12.5",fill:"#565E66"},"筆芯"));
+    g.appendChild(p);
+  }
+  wire("M620 150 L660 150 L660 235 L240 235", has("close"));
+  // 電流動畫
+  if(has("flow")){
+    g.appendChild(el("path",{class:"flowline", d:"M62 204 L62 150 L170 150 M244 150 L330 150 M390 150 L470 150 M620 150 L660 150 L660 235 L240 235",
+      fill:"none", stroke:"var(--current)","stroke-width":"3","stroke-linecap":"round"}));
+  }
+  $("#wireCap").innerHTML = WIRE_STEPS[wireStep].cap;
+  $("#wDesc").textContent = WIRE_STEPS[wireStep].cap.replace(/<[^>]+>/g,"");
+  $("#wireStepNo").textContent = "第 "+(wireStep+1)+" / "+WIRE_STEPS.length+" 步";
+  $("#wirePrev").disabled = wireStep===0;
+  $("#wireNext").disabled = wireStep===WIRE_STEPS.length-1;
+}
+$("#wirePrev").addEventListener("click", ()=>{ if(wireStep>0){wireStep--; drawWiring();} });
+$("#wireNext").addEventListener("click", ()=>{ if(wireStep<WIRE_STEPS.length-1){wireStep++; drawWiring();} });
+$("#wireReplay").addEventListener("click", ()=>{ wireStep=0; drawWiring(); });
+
+$("#safetyList").addEventListener("change", ()=>{
+  const all = $$('#safetyList input');
+  const done = all.filter(i=>i.checked).length;
+  const msg = $("#safetyMsg");
+  if(done===all.length){
+    msg.innerHTML = "<strong>全部完成，可以開始了。</strong>記得每次通電不超過 10 秒。";
+    store.set("safetyOK", true);
+  }else{
+    msg.textContent = "還有 "+(all.length-done)+" 項沒有勾選。";
+    store.set("safetyOK", false);
+  }
+});
+
+/* =========================================================
+   步驟條
+   ========================================================= */
+const STEP_LABELS = [
+  {b:"① 預測", t:"先寫下你猜的結果"},
+  {b:"② 模擬", t:"拉滑桿看看模型怎麼說"},
+  {b:"③ 實作", t:"放下裝置，真的去量"},
+  {b:"④ 對照", t:"到頁籤 7 把數據疊起來"}
+];
+// 步驟 5 的四步狀態由單一函式決定，避免不同模組互相覆寫
+function updateSteps5(){
+  const done = [!!t5Predict, lenData.length>=3, obsData.length>0, obsData.length>=3];
+  let active = 0;
+  if(obsData.length) active = 3;
+  else if(lenData.length>=3) active = 2;
+  else if(t5Predict) active = 1;
+  renderSteps("#steps5", active, done);
+}
+// 鎖住的區塊要真的不能操作，也不能被鍵盤 Tab 進去
+function setLocked(hostSel, locked){
+  const host = $(hostSel); if(!host) return;
+  host.classList.toggle("is-locked", locked);
+  const inner = host.querySelector(".locked");
+  if(inner){ if(locked) inner.setAttribute("inert",""); else inner.removeAttribute("inert"); }
+}
+function renderSteps(hostId, activeIdx, doneFlags){
+  const host = $(hostId); if(!host) return;
+  host.textContent = "";
+  STEP_LABELS.forEach((s,i)=>{
+    const d = document.createElement("div");
+    d.className="s"; d.setAttribute("role","listitem");
+    d.dataset.state = doneFlags[i] ? "done" : (i===activeIdx ? "active" : "todo");
+    d.innerHTML = "<b>"+s.b+"</b>"+s.t;
+    host.appendChild(d);
+  });
+}
+
+/* =========================================================
+   頁籤 5：長度模擬
+   ========================================================= */
+const LEN_GRADE = ()=> MODE==="elem" ? "2H" : "HB";
+// 只保存「取樣了哪些長度」；電阻與亮度一律依當前版本的筆芯即時計算，
+// 這樣切換國小／國中版時，表格、圖表與滑桿讀數永遠一致。
+let lenData = store.get("lenData", []).map(d=> ({L:d.L}));
+function lenRow(L){
+  const R = leadR(L, 0.5, LEN_GRADE(), false);
+  const b = bright(ledMA(R));
+  return {L:L, R:R, lvl:b.lvl, t:b.t};
+}
+let lenFitOn = false;
+let t5Predict = store.get("t5Predict", null);
+
+function drawLenScene(L){
+  const g = $("#lenScene"); if(!g) return;
+  g.textContent = "";
+  const x0 = 90, pxPerCm = 46, y = 150, ry = y + 52;   // ry：直尺上緣，留出長度標註的空間
+  // 直尺
+  g.appendChild(el("rect",{x:x0-14, y:ry, width:10*pxPerCm+28, height:34, rx:4, fill:"#F4E3B5", stroke:"#D8C48A"}));
+  for(let c=0;c<=10;c++){
+    const x = x0 + c*pxPerCm;
+    g.appendChild(el("line",{x1:x,y1:ry,x2:x,y2:ry+(c%5===0?14:8),stroke:"#8A7742","stroke-width":c%5===0?1.6:1}));
+    if(c%2===0) g.appendChild(el("text",{x:x,y:ry+30,"text-anchor":"middle","font-size":"11",fill:"#8A7742"},String(c)));
+  }
+  g.appendChild(el("text",{x:x0+10*pxPerCm+34,y:ry+24,"font-size":"12",fill:"#8A7742"},"cm"));
+  const xA = x0, xB = x0 + L*pxPerCm;
+  const R = leadR(L, 0.5, LEN_GRADE(), false), mA = ledMA(R);
+
+  // 通電段高亮：畫在筆芯「後面」且比筆芯高，做成光暈，
+  // 避免蓋在筆芯上讓石墨看起來變成棕色。
+  g.appendChild(el("rect",{x:xA-4, y:y-13, width:Math.max(0,xB-xA)+8, height:26, rx:13, fill:"var(--current)", opacity:".22"}));
+  // 筆芯
+  g.appendChild(el("rect",{x:x0-10, y:y-6, width:10*pxPerCm+20, height:12, rx:6, fill:"var(--graphite)"}));
+  g.appendChild(el("rect",{x:x0-10, y:y-6, width:10*pxPerCm+20, height:4, rx:2, fill:"#5A6169"}));
+
+  // 導線：電池＋ → LED → 右夾 → 筆芯 → 左夾 → 電池－，構成完整迴路
+  const wire = d=> g.appendChild(el("path",{d:d, fill:"none", stroke:"var(--copper)","stroke-width":"4","stroke-linecap":"round","stroke-linejoin":"round"}));
+  wire("M156 49 L612 49");                                  // 電池＋ → LED
+  wire("M644 49 L690 49 L690 104 L"+xB+" 104 L"+xB+" "+(y-16)); // LED → 右夾
+  wire("M"+xA+" "+(y-16)+" L"+xA+" 88 L60 88 L60 64");       // 左夾 → 電池－
+
+  // 夾子（畫在導線之上）
+  [xA,xB].forEach(x=>{
+    const cg = el("g",{transform:"translate("+x+","+y+")"});
+    cg.appendChild(el("path",{d:"M-9 -16 l18 0 l7 16 l-7 16 l-18 0 z", fill:"#8A939C"}));
+    cg.appendChild(el("rect",{x:-3,y:-4,width:6,height:8,fill:"#5F686F"}));
+    g.appendChild(cg);
+  });
+
+  // 長度標註（放在筆芯與直尺之間，不壓到筆芯，也不撞到導線）
+  const dy = y + 24;
+  g.appendChild(el("line",{x1:xA,y1:dy,x2:xB,y2:dy,stroke:"#1D2126","stroke-width":"1.5"}));
+  g.appendChild(el("line",{x1:xA,y1:dy-6,x2:xA,y2:dy+6,stroke:"#1D2126","stroke-width":"1.5"}));
+  g.appendChild(el("line",{x1:xB,y1:dy-6,x2:xB,y2:dy+6,stroke:"#1D2126","stroke-width":"1.5"}));
+  g.appendChild(el("text",{x:(xA+xB)/2, y:dy+20, "text-anchor":"middle","font-size":"14","font-weight":"700",fill:"#1D2126"}, fmt(L,1)+" cm"));
+
+  // LED（橫置串在上方導線上）
+  const L2 = el("g",{transform:"translate(628,49)"});
+  if(mA>0.5){
+    L2.appendChild(el("circle",{cx:0,cy:0,r:Math.max(16, mA*1.7),fill:"#FF5A4D",opacity:String(Math.min(.35, mA/60))}));
+    L2.appendChild(el("circle",{cx:0,cy:0,r:Math.max(10, mA*0.95),fill:"#FF7A5A",opacity:String(Math.min(.55, mA/38))}));
+  }
+  L2.appendChild(el("path",{d:"M-4 -14 h15 a14 14 0 0 1 0 28 h-15 z",fill: mA>15?"#FF4B3A":"#D63A2E",stroke:"#A8261B","stroke-width":"1.3"}));
+  L2.appendChild(el("rect",{x:-9,y:-17,width:5,height:34,rx:2,fill:"#C9302A"}));
+  L2.appendChild(el("text",{x:0,y:38,"text-anchor":"middle","font-size":"12",fill:"#565E66"},"LED"));
+  g.appendChild(L2);
+
+  // 電池盒
+  const bt = el("g",{transform:"translate(60,34)"});
+  bt.appendChild(el("rect",{x:0,y:0,width:96,height:30,rx:5,fill:"#4A5058"}));
+  bt.appendChild(el("rect",{x:6,y:5,width:38,height:20,rx:3,fill:"#C9A227"}));
+  bt.appendChild(el("rect",{x:52,y:5,width:38,height:20,rx:3,fill:"#C9A227"}));
+  bt.appendChild(el("text",{x:48,y:-8,"text-anchor":"middle","font-size":"11.5",fill:"#565E66"},"3 V 電池"));
+  bt.appendChild(el("text",{x:-6,y:44,"text-anchor":"middle","font-size":"15","font-weight":"700",fill:"#1D2126"},"－"));
+  bt.appendChild(el("text",{x:104,y:8,"text-anchor":"middle","font-size":"14","font-weight":"700",fill:"#B3261E"},"＋"));
+  g.appendChild(bt);
+
+  // 電流方向（沿著導線與通電段，不再是懸空的線）
+  g.appendChild(el("path",{class:"flowline",
+    d:"M156 49 L612 49 M644 49 L690 49 L690 104 L"+xB+" 104 L"+xB+" "+(y-16)+
+      " M"+xB+" "+y+" L"+xA+" "+y+" M"+xA+" "+(y-16)+" L"+xA+" 88 L60 88 L60 64",
+    fill:"none", stroke:"var(--current)","stroke-width":"2.5","stroke-linecap":"round"}));
+
+  $("#lenDesc").textContent = "兩個夾子之間的筆芯長度為 "+fmt(L,1)+" 公分。"+(MODE==="elem"
+    ? "燈的亮度為「"+bright(mA).t+"」。"
+    : "量到的電阻約 "+fmt(R,1)+" 歐姆。");
+}
+function renderLen(){
+  const s = $("#lenSlider"); if(!s) return;
+  const L = Number(s.value);
+  $("#lenVal").textContent = fmt(L,1);
+  drawLenScene(L);
+  const R = leadR(L, 0.5, LEN_GRADE(), false), mA = ledMA(R);
+  const bo = bright(mA);
+  if($("#lenBright")) $("#lenBright").textContent = bo.t;
+  if($("#lenR")) $("#lenR").textContent = fmt(R,1);
+  if($("#lenI")) $("#lenI").textContent = fmt(mA,1);
+  $("#lenCap").innerHTML = MODE==="elem"
+    ? "使用 0.5 mm <b>2H</b> 筆芯。橘色高亮的那一段，就是電流必須通過的筆芯。"
+    : "使用 0.5 mm <b>HB</b> 筆芯。橘色高亮的那一段，就是電流必須通過的筆芯。";
+  renderLenTable(); renderLenChart(); updateSteps5();
+}
+$("#lenSlider") && $("#lenSlider").addEventListener("input", renderLen);
+$("#lenRec").addEventListener("click", ()=>{
+  const L = Number($("#lenSlider").value);
+  lenData = lenData.filter(d=> d.L!==L);
+  lenData.push({L:L});
+  lenData.sort((a,b)=> a.L-b.L);
+  store.set("lenData", lenData); renderLen();
+});
+$("#lenClear").addEventListener("click", ()=>{ lenData=[]; lenFitOn=false; store.set("lenData",[]); renderLen(); });
+function renderLenTable(){
+  const tb = $("#lenTable tbody"); if(!tb) return;
+  tb.textContent="";
+  lenData.forEach((d,i)=>{
+    const row = lenRow(d.L);
+    const tr = document.createElement("tr");
+    const valCell = MODE==="elem"
+      ? '<td>'+row.t+'（'+row.lvl+'）</td>'
+      : '<td>'+fmt(row.R,1)+'</td>';
+    tr.innerHTML = "<td>"+fmt(d.L,1)+"</td>"+valCell+'<td><button class="btn" data-i="'+i+'">✕</button></td>';
+    tb.appendChild(tr);
+  });
+  $("#lenTableMsg").textContent = lenData.length ? ("已記錄 "+lenData.length+" 筆。"+(lenData.length<4?"再多記幾筆才看得出趨勢。":"")) : "還沒有資料。拉動滑桿後按「記錄這一筆」。";
+  const fit = $("#lenFit"); if(fit) fit.disabled = lenData.length<4;
+  tb.onclick = e=>{
+    const b = e.target.closest("button[data-i]"); if(!b) return;
+    lenData.splice(Number(b.dataset.i),1); store.set("lenData",lenData); renderLen();
+  };
+}
+function linreg(pts){
+  const n=pts.length; let sx=0,sy=0,sxy=0,sxx=0;
+  pts.forEach(p=>{ sx+=p.x; sy+=p.y; sxy+=p.x*p.y; sxx+=p.x*p.x; });
+  const d = n*sxx - sx*sx; if(Math.abs(d)<1e-9) return null;
+  const m = (n*sxy - sx*sy)/d, b = (sy - m*sx)/n;
+  return {m:m, b:b};
+}
+function axes(svg, W, H, pad, xmax, ymax, xlab, ylab){
+  svg.appendChild(el("rect",{x:0,y:0,width:W,height:H,fill:"#fff"}));
+  svg.appendChild(el("line",{x1:pad.l,y1:H-pad.b,x2:W-pad.r,y2:H-pad.b,stroke:"#565E66","stroke-width":"1.5"}));
+  svg.appendChild(el("line",{x1:pad.l,y1:pad.t,x2:pad.l,y2:H-pad.b,stroke:"#565E66","stroke-width":"1.5"}));
+  for(let i=0;i<=5;i++){
+    const yv = ymax*i/5, y = H-pad.b-(H-pad.b-pad.t)*i/5;
+    svg.appendChild(el("line",{x1:pad.l,y1:y,x2:W-pad.r,y2:y,stroke:"#EDF1F4","stroke-width":"1"}));
+    svg.appendChild(el("text",{x:pad.l-7,y:y+4,"text-anchor":"end","font-size":"10.5",fill:"#565E66"}, ymax>=20?String(Math.round(yv)):fmt(yv,1)));
+  }
+  for(let i=0;i<=5;i++){
+    const xv = xmax*i/5, x = pad.l+(W-pad.r-pad.l)*i/5;
+    svg.appendChild(el("text",{x:x,y:H-pad.b+16,"text-anchor":"middle","font-size":"10.5",fill:"#565E66"}, xmax>=20?String(Math.round(xv)):fmt(xv,1)));
+  }
+  svg.appendChild(el("text",{x:(W+pad.l-pad.r)/2,y:H-6,"text-anchor":"middle","font-size":"11.5",fill:"#1D2126"},xlab));
+  svg.appendChild(el("text",{x:12,y:(H-pad.b+pad.t)/2,"text-anchor":"middle","font-size":"11.5",fill:"#1D2126",transform:"rotate(-90 12 "+((H-pad.b+pad.t)/2)+")"},ylab));
+}
+function renderLenChart(){
+  const svg = $("#lenChart"); if(!svg) return;
+  svg.textContent="";
+  const W=420,H=300,pad={l:48,r:16,t:16,b:38};
+  const junior = MODE==="junior";
+  const rows = lenData.map(d=> lenRow(d.L));
+  const ymax = junior ? Math.max(10, Math.ceil(Math.max(...rows.map(d=>d.R), 10)/10)*10) : 5;
+  const xmax = 10;
+  const px = v=> pad.l + (W-pad.r-pad.l)*v/xmax;
+  const py = v=> H-pad.b - (H-pad.b-pad.t)*v/ymax;
+  svg.appendChild(el("desc",{id:"lenChartDesc"}));
+  axes(svg,W,H,pad,xmax,ymax,"筆芯長度 (cm)", junior?"電阻 R (Ω)":"亮度等級 (1-5)");
+  if(!lenData.length){
+    svg.appendChild(el("text",{x:W/2,y:H/2,"text-anchor":"middle","font-size":"13",fill:"#9AA4AE"},"還沒有資料"));
+    $("#lenChartDesc") && ($("#lenChartDesc").textContent="尚無資料");
+    return;
+  }
+  if(junior){
+    rows.forEach(d=> svg.appendChild(el("circle",{cx:px(d.L),cy:py(d.R),r:5,fill:"var(--junior)"})));
+    if(lenFitOn && rows.length>=4){
+      const f = linreg(rows.map(d=>({x:d.L,y:d.R})));
+      if(f){
+        svg.appendChild(el("line",{x1:px(0),y1:py(f.b),x2:px(xmax),y2:py(f.m*xmax+f.b),stroke:"var(--current)","stroke-width":"2","stroke-dasharray":"6 4"}));
+        $("#lenFitMsg").innerHTML = "斜率 ≈ <b>"+fmt(f.m,2)+"</b> Ω/cm，截距 ≈ <b>"+fmt(f.b,2)+"</b> Ω";
+      }
+    }
+  }else{
+    const bw = (W-pad.r-pad.l)/12;
+    rows.forEach(d=>{
+      const x = px(d.L)-bw/2, y = py(d.lvl);
+      svg.appendChild(el("rect",{x:x,y:y,width:bw,height:(H-pad.b)-y,fill:"var(--elem)",rx:3}));
+    });
+  }
+  const txt = junior
+    ? "散布圖顯示 "+lenData.length+" 個資料點，電阻隨長度增加而增加。"
+    : "長條圖顯示 "+lenData.length+" 個資料點，亮度等級隨長度增加而下降。";
+  const dn = svg.querySelector("desc"); if(dn) dn.textContent = txt;
+}
+$("#lenFit") && $("#lenFit").addEventListener("click", ()=>{ lenFitOn = !lenFitOn; if(!lenFitOn) $("#lenFitMsg").textContent=""; renderLenChart(); });
+
+// 預測解鎖
+$("#t5Choices") && $("#t5Choices").addEventListener("click", e=>{
+  const b = e.target.closest("button[data-p]"); if(!b) return;
+  $$("#t5Choices button").forEach(x=> x.classList.toggle("btn-primary", x===b));
+  b.dataset.sel="1";
+});
+$("#t5Lock").addEventListener("click", ()=>{
+  let v = null;
+  if(MODE==="elem"){ const b = $("#t5Choices .btn-primary"); v = b? b.textContent : null; }
+  else { v = $("#t5PredictText").value.trim() || null; }
+  if(!v){ $("#t5PredictMsg").textContent = MODE==="elem" ? "請先選一個預測。" : "請先寫下你的預測。"; return; }
+  t5Predict = v; store.set("t5Predict", v);
+  setLocked("#t5SimHost", false);
+  $("#t5PredictMsg").textContent = "已記錄。模擬解鎖了 ✓";
+  renderLen();
+});
+// 重新載入時還原先前的預測
+function restoreT5(){
+  setLocked("#t5SimHost", !t5Predict);
+  if(!t5Predict) return;
+  const ta = $("#t5PredictText");
+  if(ta && t5Predict.length>6) ta.value = t5Predict;
+  $$("#t5Choices button").forEach(b=> b.classList.toggle("btn-primary", b.textContent===t5Predict));
+}
+$("#t5GoCompare").addEventListener("click", ()=>{ selectTab(6); window.scrollTo({top:0,behavior:reduceMotion?"auto":"smooth"}); });
+
+/* =========================================================
+   頁籤 6：粗細與軟硬
+   ========================================================= */
+const LEAD_L = 8.0;
+let curDia = 0.5, curHard = "2B", diaInvMode = false;
+let t6Predict = store.get("t6Predict", null);
+
+function drawLeadScene(){
+  const g = $("#leadScene"); if(!g) return;
+  g.textContent="";
+  const dias = [0.5,0.7,2.0];
+  // 真實比例：2.0mm -> 半徑 62px，因此 1mm 直徑 = 62px 半徑基準
+  const scale = 62/ (2.0/2);   // px per mm(radius)
+  const cx = [140, 330, 570], cy = 130;
+  dias.forEach((d,i)=>{
+    const r = (d/2)*scale;
+    const sel = Math.abs(d-curDia)<1e-6;
+    const gg = el("g",{transform:"translate("+cx[i]+","+cy+")"});
+    if(sel) gg.appendChild(el("circle",{cx:0,cy:0,r:r+9,fill:"none",stroke:"var(--accent)","stroke-width":"3"}));
+    gg.appendChild(el("circle",{cx:0,cy:0,r:r,fill:"var(--graphite)"}));
+    // 石墨/黏土顆粒：顆粒大小固定、數量與截面積成正比，
+    // 讓三種粗細看起來是「同一種材料」，密度不會隨粗細改變。
+    const clay = HARDNESS[curHard].clay/100;
+    const DOT = 2.4;
+    const n = Math.max(6, Math.round(r*r/26));
+    for(let k=0;k<n;k++){
+      const a = (k*2.399963), rr = r*Math.sqrt((k+0.5)/n)*0.92;
+      const x = Math.cos(a)*rr, y = Math.sin(a)*rr;
+      const isClay = ((k*37)%100)/100 < clay;
+      gg.appendChild(el("circle",{cx:fmt(x,1),cy:fmt(y,1),r:DOT, fill: isClay?"var(--clay)":"#585F66"}));
+    }
+    gg.appendChild(el("circle",{cx:0,cy:0,r:r,fill:"none",stroke:"#2A2F34","stroke-width":"1.5"}));
+    // 標籤放在圓外下方安全區
+    gg.appendChild(el("text",{x:0,y:r+26,"text-anchor":"middle","font-size":"14","font-weight":"700",fill:"#1D2126"}, d.toFixed(1)+" mm"));
+    gg.appendChild(el("text",{x:0,y:r+44,"text-anchor":"middle","font-size":"12",fill:"#565E66"}, "截面積 "+fmt(areaMM2(d),3)+" mm²"));
+    g.appendChild(gg);
+  });
+  // 圖例（右上安全區）
+  const lg = el("g",{transform:"translate(24,24)"});
+  lg.appendChild(el("circle",{cx:7,cy:7,r:5,fill:"#585F66"}));
+  lg.appendChild(el("text",{x:19,y:11,"font-size":"12",fill:"#565E66"},"石墨"));
+  lg.appendChild(el("circle",{cx:7,cy:27,r:5,fill:"var(--clay)"}));
+  lg.appendChild(el("text",{x:19,y:31,"font-size":"12",fill:"#565E66"},"黏土（"+curHard+"：約 "+HARDNESS[curHard].clay+"%）"));
+  g.appendChild(lg);
+  $("#leadDesc").textContent = "目前選擇 "+curDia.toFixed(1)+" 公釐的 "+curHard+" 筆芯，截面積約 "+fmt(areaMM2(curDia),3)+" 平方公釐，黏土比例約 "+HARDNESS[curHard].clay+"%。";
+}
+function renderLead(){
+  if(!$("#leadScene")) return;
+  drawLeadScene();
+  const R = leadR(LEAD_L, curDia, curHard, false), mA = ledMA(R);
+  $("#leadA").textContent = fmt(areaMM2(curDia),3);
+  if($("#leadR")) $("#leadR").textContent = fmt(R,1);
+  if($("#leadI")) $("#leadI").textContent = fmt(mA,1);
+  if($("#leadBright")) $("#leadBright").textContent = bright(mA).t;
+  $$("#diaPicker button").forEach(b=> b.setAttribute("aria-pressed", Math.abs(Number(b.dataset.d)-curDia)<1e-6));
+  $$("#hardPicker button").forEach(b=> b.setAttribute("aria-pressed", b.dataset.h===curHard));
+  renderDiaChart(); renderHardChart();
+  renderSteps("#steps6", t6Predict?1:0, [!!t6Predict, true, false, false]);
+}
+$("#diaPicker").addEventListener("click", e=>{ const b=e.target.closest("button[data-d]"); if(!b) return; curDia=Number(b.dataset.d); renderLead(); });
+$("#hardPicker").addEventListener("click", e=>{ const b=e.target.closest("button[data-h]"); if(!b) return; curHard=b.dataset.h; renderLead(); });
+$("#t6Choices").addEventListener("click", e=>{
+  const b = e.target.closest("button[data-p]"); if(!b) return;
+  $$("#t6Choices button").forEach(x=> x.classList.toggle("btn-primary", x===b));
+});
+$("#t6Lock").addEventListener("click", ()=>{
+  const b = $("#t6Choices .btn-primary");
+  if(!b){ $("#t6PredictMsg").textContent = "請先選一個預測。"; return; }
+  t6Predict = b.textContent; store.set("t6Predict", t6Predict);
+  setLocked("#t6SimHost", false);
+  $("#t6PredictMsg").textContent = "已記錄。模擬解鎖了 ✓";
+  renderLead();
+});
+function restoreT6(){
+  setLocked("#t6SimHost", !t6Predict);
+  if(!t6Predict) return;
+  $$("#t6Choices button").forEach(b=> b.classList.toggle("btn-primary", b.textContent===t6Predict));
+}
+
+// 把座標軸上限取成好讀的整數（1／2／2.5／5 的倍數），避免出現 0、7、13、20、26 這種刻度。
+// 同時試 4 格與 5 格，挑長條填得比較滿的那一種。
+function niceAxis(v){
+  if(!(v>0)) return {max:1, steps:5};
+  let best = null;
+  [4,5].forEach(steps=>{
+    const target = v/steps;
+    const mag = Math.pow(10, Math.floor(Math.log10(target)));
+    const mult = [1,2,2.5,5,10].find(m=> m*mag >= target - 1e-9) || 10;
+    const max = mult*mag*steps;
+    const fill = v/max;
+    if(!best || fill > best.fill) best = {max:max, steps:steps, fill:fill};
+  });
+  return best;
+}
+function barChart(svgSel, items, ylab, note, fixedMax){
+  const svg = $(svgSel); if(!svg) return;
+  svg.textContent="";
+  const W=420,H=260,pad={l:50,r:14,t:24,b:44};   // t 留給長條頂端的數值標籤
+  const peak = Math.max(...items.map(i=>i.v));
+  const ax = fixedMax ? {max:fixedMax, steps:fixedMax<=5?fixedMax:5} : niceAxis(peak*1.06);
+  const ymax = ax.max, steps = ax.steps;
+  svg.appendChild(el("rect",{x:0,y:0,width:W,height:H,fill:"#fff"}));
+  svg.appendChild(el("line",{x1:pad.l,y1:H-pad.b,x2:W-pad.r,y2:H-pad.b,stroke:"#565E66","stroke-width":"1.5"}));
+  svg.appendChild(el("line",{x1:pad.l,y1:pad.t,x2:pad.l,y2:H-pad.b,stroke:"#565E66","stroke-width":"1.5"}));
+  for(let i=0;i<=steps;i++){
+    const y = H-pad.b-(H-pad.b-pad.t)*i/steps;
+    svg.appendChild(el("line",{x1:pad.l,y1:y,x2:W-pad.r,y2:y,stroke:"#EDF1F4"}));
+    const v = ymax*i/steps;
+    svg.appendChild(el("text",{x:pad.l-6,y:y+4,"text-anchor":"end","font-size":"10.5",fill:"#565E66"}, Number.isInteger(v)?String(v):fmt(v,1)));
+  }
+  const n=items.length, slot=(W-pad.r-pad.l)/n, bw=Math.min(52, slot*0.6);
+  items.forEach((it,i)=>{
+    const x = pad.l + slot*i + slot/2 - bw/2;
+    const h = (H-pad.b-pad.t)*it.v/ymax;
+    svg.appendChild(el("rect",{x:x,y:H-pad.b-h,width:bw,height:h,fill:it.hl?"var(--accent)":"#9AA4AE",rx:3}));
+    svg.appendChild(el("text",{x:x+bw/2,y:H-pad.b-h-6,"text-anchor":"middle","font-size":"11",fill:"#1D2126"}, fmt(it.v, it.v>=10?0:1)));
+    svg.appendChild(el("text",{x:x+bw/2,y:H-pad.b+16,"text-anchor":"middle","font-size":"11.5",fill:"#1D2126"}, it.k));
+  });
+  svg.appendChild(el("text",{x:14,y:(H-pad.b+pad.t)/2,"text-anchor":"middle","font-size":"11.5",fill:"#1D2126",transform:"rotate(-90 14 "+((H-pad.b+pad.t)/2)+")"}, ylab));
+  if(note) svg.appendChild(el("text",{x:W/2,y:H-6,"text-anchor":"middle","font-size":"11",fill:"#565E66"}, note));
+  // 重建被清空的 <desc>，並保留 aria-labelledby 指到的 id
+  const d = el("desc",{id: svgSel.slice(1)+"Desc"});
+  d.textContent = ylab+"：" + items.map(i=> i.k+" 為 "+fmt(i.v,1)).join("；");
+  svg.insertBefore(d, svg.firstChild);
+}
+function renderDiaChart(){
+  const junior = MODE==="junior";
+  const dias=[0.5,0.7,2.0];
+  if(junior && diaInvMode){
+    // R 對 1/A 散布圖
+    const svg = $("#diaChart"); svg.textContent="";
+    const W=420,H=260,pad={l:50,r:16,t:16,b:44};
+    const pts = dias.map(d=> ({x:1/areaMM2(d), y:leadR(LEAD_L,d,"2B",false), d:d}));
+    const xmax = Math.max(...pts.map(p=>p.x))*1.15, ymax = Math.max(...pts.map(p=>p.y))*1.15;
+    const px=v=> pad.l+(W-pad.r-pad.l)*v/xmax, py=v=> H-pad.b-(H-pad.b-pad.t)*v/ymax;
+    axes(svg,W,H,pad,xmax,ymax,"1 ÷ 截面積 (1/mm²)","電阻 R (Ω)");
+    const slope = pts[0].y/pts[0].x;
+    svg.appendChild(el("line",{x1:px(0),y1:py(0),x2:px(xmax),y2:py(slope*xmax),stroke:"var(--current)","stroke-width":"2","stroke-dasharray":"6 4"}));
+    pts.forEach(p=>{
+      svg.appendChild(el("circle",{cx:px(p.x),cy:py(p.y),r:6,fill:"var(--junior)"}));
+      svg.appendChild(el("text",{x:px(p.x),y:py(p.y)-12,"text-anchor":"middle","font-size":"11",fill:"#565E66"}, p.d.toFixed(1)+"mm"));
+    });
+    const d = el("desc",{}); d.textContent="電阻對截面積倒數的散布圖，三個點大致落在一條通過原點的直線上，代表電阻與截面積成反比。";
+    svg.insertBefore(d, svg.firstChild);
+    $("#diaMode").setAttribute("aria-pressed","true");
+    $("#diaMode").textContent = "切換：回長條圖";
+    return;
+  }
+  const items = dias.map(d=>{
+    const R = leadR(LEAD_L,d,"2B",false);
+    return junior
+      ? {k:d.toFixed(1)+"mm", v:R, hl:Math.abs(d-curDia)<1e-6}
+      : {k:d.toFixed(1)+"mm", v:bright(ledMA(R)).lvl, hl:Math.abs(d-curDia)<1e-6};
+  });
+  barChart("#diaChart", items, junior?"電阻 R (Ω)":"亮度等級 (1-5)", "長度固定 8.0 cm，硬度固定 2B", junior?null:5);
+  if($("#diaMode")){ $("#diaMode").setAttribute("aria-pressed","false"); $("#diaMode").textContent="切換：R 對 1/截面積"; }
+}
+$("#diaMode") && $("#diaMode").addEventListener("click", ()=>{ diaInvMode = !diaInvMode; renderDiaChart(); });
+function renderHardChart(){
+  const junior = MODE==="junior";
+  const items = HARD_ORDER.map(h=>{
+    const R = leadR(LEAD_L,0.5,h,false);
+    return junior
+      ? {k:h, v:R, hl:h===curHard}
+      : {k:h, v:bright(ledMA(R)).lvl, hl:h===curHard};
+  });
+  barChart("#hardChart", items, junior?"電阻 R (Ω)":"亮度等級 (1-5)", "長度 8.0 cm，粗細固定 0.5 mm", junior?null:5);
+}
+
+/* =========================================================
+   頁籤 7：實測對照
+   ========================================================= */
+// 兩個版本蒐集的是不同的量（亮度等級 vs 電阻 Ω），因此分開保存，
+// 切換版本不會把歐姆數誤讀成亮度等級。
+const OBS_KEY = ()=> "obsData_"+MODE;
+let obsData = store.get(OBS_KEY(), []);
+function loadObs(){ obsData = store.get(OBS_KEY(), []); }
+function saveObs(){ store.set(OBS_KEY(), obsData); }
+function simValue(L){
+  const R = leadR(L, 0.5, LEN_GRADE(), false);
+  return MODE==="elem" ? bright(ledMA(R)).lvl : R;
+}
+function renderObs(){
+  const tb = $("#obsTable tbody"); if(!tb) return;
+  tb.textContent="";
+  obsData.forEach((d,i)=>{
+    const sim = simValue(d.L);
+    const diff = d.v - sim;
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td>"+fmt(d.L,1)+"</td><td>"+fmt(d.v,1)+"</td><td>"+fmt(sim,1)+"</td><td>"+(diff>=0?"+":"")+fmt(diff,1)+"</td>"+
+                   '<td><button class="btn" data-i="'+i+'">✕</button></td>';
+    tb.appendChild(tr);
+  });
+  $("#obsMsg").textContent = obsData.length ? ("已輸入 "+obsData.length+" 筆實測資料。") : "還沒有實測資料。";
+  tb.onclick = e=>{ const b=e.target.closest("button[data-i]"); if(!b) return; obsData.splice(Number(b.dataset.i),1); saveObs(); renderObs(); };
+  renderObsChart(); renderObsGuide(); updateSteps5();
+}
+$("#obsAdd").addEventListener("click", ()=>{
+  const L = Number($("#obsLen").value), v = Number($("#obsVal").value);
+  if(!(L>0) || $("#obsVal").value===""){ $("#obsMsg").textContent="請填入長度與量到的數值。"; return; }
+  if(MODE==="elem" && (v<1 || v>5)){ $("#obsMsg").textContent="亮度等級請填 1 到 5。"; return; }
+  obsData = obsData.filter(d=> d.L!==L);
+  obsData.push({L:L, v:v}); obsData.sort((a,b)=>a.L-b.L);
+  saveObs(); $("#obsVal").value=""; renderObs();
+});
+$("#obsClear").addEventListener("click", ()=>{ obsData=[]; saveObs(); renderObs(); });
+function renderObsChart(){
+  const svg = $("#obsChart"); if(!svg) return;
+  svg.textContent="";
+  const W=420,H=300,pad={l:48,r:16,t:16,b:38};
+  const junior = MODE==="junior";
+  const xmax = 12;
+  const simPts = [];
+  for(let L=1; L<=xmax; L+=0.5) simPts.push({x:L, y:simValue(L)});
+  const ymax = junior
+    ? Math.ceil(Math.max(...simPts.map(p=>p.y), ...obsData.map(d=>d.v), 10)*1.15/10)*10
+    : 5.5;
+  const px=v=> pad.l+(W-pad.r-pad.l)*v/xmax, py=v=> H-pad.b-(H-pad.b-pad.t)*v/ymax;
+  axes(svg,W,H,pad,xmax,ymax,"筆芯長度 (cm)", junior?"電阻 R (Ω)":"亮度等級 (1-5)");
+  // 模擬線
+  let d = "";
+  simPts.forEach((p,i)=> d += (i?" L":"M")+px(p.x)+" "+py(p.y));
+  svg.appendChild(el("path",{d:d, fill:"none", stroke:"#8A939C","stroke-width":"2","stroke-dasharray":"7 5"}));
+  // 實測點
+  obsData.forEach(o=>{
+    svg.appendChild(el("circle",{cx:px(o.L),cy:py(o.v),r:6,fill:"var(--current)",stroke:"#fff","stroke-width":"1.6"}));
+    const sim = simValue(o.L);
+    svg.appendChild(el("line",{x1:px(o.L),y1:py(o.v),x2:px(o.L),y2:py(sim),stroke:"var(--current)","stroke-width":"1.2","stroke-dasharray":"2 3",opacity:".7"}));
+  });
+  const dn = el("desc",{id:"obsChartDesc"});
+  dn.textContent = obsData.length
+    ? "圖中灰色虛線為模擬曲線，橘色圓點為 "+obsData.length+" 筆實測資料，兩者的落差以細虛線標示。"
+    : "圖中僅有灰色虛線的模擬曲線，尚未輸入實測資料。";
+  svg.insertBefore(dn, svg.firstChild);
+}
+function renderObsGuide(){
+  const box = $("#obsGuide"); if(!box) return;
+  if(obsData.length<3){ box.textContent = "輸入至少 3 筆資料後，這裡會出現引導問題。"; return; }
+  const diffs = obsData.map(o=> ({L:o.L, d: o.v - simValue(o.L)}));
+  const worst = diffs.reduce((a,b)=> Math.abs(b.d)>Math.abs(a.d)?b:a);
+  const best  = diffs.reduce((a,b)=> Math.abs(b.d)<Math.abs(a.d)?b:a);
+  const allHigh = diffs.every(x=> x.d > 0), allLow = diffs.every(x=> x.d < 0);
+  let extra = "";
+  if(allHigh) extra = "你的每一筆都比模擬<b>高</b>。整條線一起往上平移，通常代表電路裡多了一段固定的阻礙——想想<b>夾子的接觸</b>。";
+  else if(allLow) extra = "你的每一筆都比模擬<b>低</b>。想想是不是筆芯比模擬用的更軟（石墨更多），或是長度量短了。";
+  else extra = "有的偏高有的偏低，比較像是<b>每一次量測的隨機誤差</b>，而不是系統性的偏差。";
+  box.innerHTML =
+    "<p style='margin:0 0 .5em'><strong>看看你的圖：</strong></p>"+
+    "<ul style='margin:0;padding-left:1.2em'>"+
+    "<li>最接近模擬的是 <b>"+fmt(best.L,1)+" cm</b> 那一筆（差 "+fmt(Math.abs(best.d),1)+"）。</li>"+
+    "<li>差最多的是 <b>"+fmt(worst.L,1)+" cm</b> 那一筆（差 "+fmt(Math.abs(worst.d),1)+"）。那一筆量的時候發生了什麼事？</li>"+
+    "<li>"+extra+"</li>"+
+    "<li>你的實測資料，<b>趨勢</b>跟模擬一樣嗎？（越長是不是越暗／電阻越大）趨勢對不對，比數字準不準更重要。</li>"+
+    "</ul>";
+}
+
+/* =========================================================
+   頁籤 7：紙上鉛筆線路
+   ========================================================= */
+const PAPER_OHM_PER_CM = 150;
+function paperR(L){ return PAPER_OHM_PER_CM*L; }
+function drawPaper(L){
+  const g = $("#paperScene"); if(!g) return;
+  g.textContent="";
+  const x0=90, pxPerCm=62, y=150;
+  // 紙
+  g.appendChild(el("rect",{x:40,y:56,width:600,height:180,rx:4,fill:"#FFFDF6",stroke:"#E4DCC6"}));
+  for(let yy=84; yy<236; yy+=26) g.appendChild(el("line",{x1:40,y1:yy,x2:640,y2:yy,stroke:"#F0EAD8","stroke-width":"1"}));
+  // 鉛筆塗黑軌跡
+  g.appendChild(el("rect",{x:x0-16,y:y-16,width:8*pxPerCm+32,height:32,rx:6,fill:"#4A5058"}));
+  // 手繪筆觸質感（固定位置，不用亂數，確保每次重繪一致）
+  for(let i=0;i<26;i++){
+    const x = x0-12 + i*((8*pxPerCm+24)/26);
+    g.appendChild(el("line",{x1:x, y1:y-14, x2:x+6, y2:y+14, stroke:"#2F343A","stroke-width":"2",opacity:".5"}));
+  }
+  // 左端固定接點
+  g.appendChild(el("path",{d:"M"+(x0-26)+" "+(y-16)+" l16 0 l7 16 l-7 16 l-16 0 z", fill:"#8A939C"}));
+  g.appendChild(el("text",{x:x0-18,y:y-26,"text-anchor":"middle","font-size":"12",fill:"#565E66"},"固定端"));
+  // 探針
+  const xp = x0 + L*pxPerCm;
+  const pg = el("g",{transform:"translate("+xp+","+y+")"});
+  pg.appendChild(el("line",{x1:0,y1:-64,x2:0,y2:-14,stroke:"#5F686F","stroke-width":"5","stroke-linecap":"round"}));
+  pg.appendChild(el("path",{d:"M-7 -14 L0 2 L7 -14 z",fill:"#3A3F44"}));
+  pg.appendChild(el("circle",{cx:0,cy:-68,r:7,fill:"var(--current)"}));
+  g.appendChild(pg);
+  // 距離標註（在軌跡下方安全區）
+  g.appendChild(el("line",{x1:x0,y1:y+30,x2:xp,y2:y+30,stroke:"#565E66","stroke-width":"1.4"}));
+  g.appendChild(el("line",{x1:x0,y1:y+24,x2:x0,y2:y+36,stroke:"#565E66","stroke-width":"1.4"}));
+  g.appendChild(el("line",{x1:xp,y1:y+24,x2:xp,y2:y+36,stroke:"#565E66","stroke-width":"1.4"}));
+  g.appendChild(el("text",{x:(x0+xp)/2,y:y+50,"text-anchor":"middle","font-size":"13","font-weight":"600",fill:"#1D2126"}, fmt(L,1)+" cm"));
+  // LED
+  const R = paperR(L), mA = ledMA(R);
+  const L2 = el("g",{transform:"translate(672,120)"});
+  if(mA>0.4){
+    L2.appendChild(el("circle",{cx:0,cy:-6,r:Math.max(12, mA*3.4),fill:"#FF5A4D",opacity:String(Math.min(.35, mA/14))}));
+  }
+  L2.appendChild(el("path",{d:"M-12 4 v-14 a12 12 0 0 1 24 0 v14 z",fill: mA>3?"#FF4B3A":"#8E3B33",stroke:"#A8261B","stroke-width":"1.3"}));
+  L2.appendChild(el("rect",{x:-15,y:4,width:30,height:5,rx:2,fill:"#C9302A"}));
+  L2.appendChild(el("text",{x:0,y:26,"text-anchor":"middle","font-size":"12",fill:"#565E66"},"LED"));
+  g.appendChild(L2);
+  $("#paperDesc").textContent = "探針距離固定端 "+fmt(L,1)+" 公分，燈的亮度為「"+paperBright(mA)+"」。距離越遠燈越暗。";
+}
+function renderPaper(){
+  const s = $("#paperSlider"); if(!s) return;
+  const L = Number(s.value);
+  $("#paperVal").textContent = fmt(L,1);
+  drawPaper(L);
+  const R = paperR(L), mA = ledMA(R);
+  $("#paperBright").textContent = paperBright(mA);
+  if($("#paperR")) $("#paperR").textContent = String(Math.round(R));
+}
+$("#paperSlider") && $("#paperSlider").addEventListener("input", renderPaper);
+
+/* =========================================================
+   闖關題
+   ========================================================= */
+const QUIZ_ELEM = [
+  { q:"下面哪一個東西，夾進電路裡可以讓燈亮起來？",
+    o:["木頭做的鉛筆桿","2B 筆芯","塑膠尺","橡皮擦"], a:1,
+    fb:["木頭是絕緣體，電流過不去。回頁籤 1 再試一次三種材料。",
+        "沒錯。筆芯裡的石墨會導電，雖然比銅困難一些，燈還是會亮。",
+        "塑膠不導電。想一想頁籤 1 的三種材料，哪一個讓燈亮了？",
+        "橡皮擦不導電。黑色或深色不代表會導電喔。"] },
+  { q:"筆芯會導電，是因為裡面有什麼？",
+    o:["鉛","石墨","黏土","顏料"], a:1,
+    fb:["鉛筆芯完全不含鉛，這只是名字造成的誤會。回頁籤 2 看看成分。",
+        "對！石墨負責導電，黏土只是把它黏在一起、讓筆芯有硬度。",
+        "黏土是不導電的，它只負責讓筆芯變硬。導電的是另一種成分。",
+        "顏料跟導電無關。黑色不等於會導電。"] },
+  { q:"小明想知道「筆芯越長，燈會不會越暗」。他應該改變什麼？",
+    o:["筆芯的長度","電池的數量","筆芯的粗細","燈泡的種類"], a:0,
+    fb:["對！他想研究長度，就只能改變長度。",
+        "電池數量改了，燈本來就會變亮變暗，就分不出是誰造成的。",
+        "他要研究的是長度不是粗細。粗細應該要固定。",
+        "燈泡換了，比較就不公平了。要研究什麼就改什麼。"] },
+  { q:"承上題，下面哪一項是他<b>一定要固定</b>的？",
+    o:["夾子之間的距離","筆芯的粗細","燈的亮度","他量了幾次"], a:1,
+    fb:["夾子之間的距離就是長度，那是他<b>要改變</b>的東西。",
+        "對！粗細如果跟著換，就不知道是長度還是粗細造成的。",
+        "燈的亮度是<b>結果</b>，是要去看的，不是固定的。",
+        "量幾次跟公平比較沒有直接關係。想想哪個「一改就會影響結果」。"] },
+  { q:"同一支筆芯，把夾子從相距 2 公分拉開到 8 公分，燈會：",
+    o:["變亮","變暗","完全不變","先亮後暗"], a:1,
+    fb:["電要走的路變長了，會更難通過，不會更亮。回頁籤 5 拉滑桿看看。",
+        "對！路變長，電比較難通過，燈就變暗。",
+        "會變喔。回頁籤 5 把滑桿從 2 拉到 8 看看。",
+        "拉開的過程中亮度是一路變化的，不會先亮起來。"] },
+  { q:"長度都是 8 公分，哪一支筆芯會讓燈最亮？",
+    o:["0.5 mm 的 2H","0.5 mm 的 2B","2.0 mm 的 2B","三支一樣亮"], a:2,
+    fb:["2H 黏土多、又細，是最不好導電的那一支。",
+        "2B 比 2H 好導電，但它很細。有沒有更粗的選項？",
+        "對！又粗（路很寬）又軟（石墨多），最好導電，燈最亮。",
+        "粗細和軟硬都會影響。回頁籤 6 一個一個切換看看。"] },
+  { q:"做實驗時，下面哪一個做法<b>非常危險</b>，絕對不可以？",
+    o:["每次通電不超過 10 秒","把筆芯直接接在電池的正負極","電路裡加一顆限流電阻","做完之後洗手"], a:1,
+    fb:["這是正確做法，可以避免筆芯過熱。",
+        "對，這叫短路。筆芯會迅速發燙、發紅甚至燒斷，可能燙傷或引燃紙張。",
+        "限流電阻是保護 LED 和筆芯的，一定要加。",
+        "洗手是好習慣，沒有危險。"] },
+  { q:"音量旋鈕轉一轉，聲音就變大變小。它的原理最接近下面哪一個？",
+    o:["換一顆更大的電池","改變電流要走的長度","把燈泡換掉","把電線剪斷"], a:1,
+    fb:["旋鈕沒有換電池，電源一直都在。想想你在紙上移動探針時做了什麼。",
+        "對！轉動旋鈕時，接觸點在電阻材料上滑動，改變了電流要走的長度——就像你在紙上移動探針。",
+        "旋鈕沒有換元件，它只是移動了一個接觸點。",
+        "剪斷就完全不通了，不會是「大小聲」的連續變化。"] }
+];
+const QUIZ_JUNIOR = [
+  { q:"要探究「筆芯長度對電阻的影響」，下列何者為<b>操作變因</b>？",
+    o:["量到的電阻值","兩夾子之間的筆芯長度","筆芯的硬度等級","電源電壓"], a:1,
+    fb:["電阻是量出來的結果，屬於應變變因。",
+        "正確。操作變因是實驗者主動改變的量。",
+        "硬度必須固定，屬於控制變因。",
+        "電壓必須固定，屬於控制變因。"] },
+  { q:"承上題，下列何者<b>不需要</b>固定？",
+    o:["筆芯的截面積","鱷魚夾的夾持鬆緊","量到的電阻值","每次通電的時間"], a:2,
+    fb:["截面積會影響電阻，必須固定。",
+        "夾持鬆緊會改變接觸電阻，必須固定。",
+        "正確。電阻是應變變因，本來就是要讓它隨長度變化的。",
+        "通電時間影響溫度與讀數穩定性，應該固定。"] },
+  { q:"某組把 R 對長度 L 作圖，得到一條<b>通過原點的直線</b>。這代表：",
+    o:["R 與 L 成正比","R 與 L 成反比","R 與 L 無關","R 與 L 平方成正比"], a:0,
+    fb:["正確。通過原點的直線代表兩量成正比。",
+        "成反比的圖形是雙曲線，不會是直線。",
+        "無關的話會是一條水平線。",
+        "平方關係的圖形會向上彎曲，不是直線。"] },
+  { q:"另一組的 R–L 圖也是直線，但<b>截距明顯大於 0</b>。最可能的原因是：",
+    o:["筆芯太粗","電池電壓太高","電路中有額外的接觸電阻","長度量得太長"], a:2,
+    fb:["筆芯粗細會改變斜率，不會產生截距。",
+        "電壓不影響電阻的量測結果。",
+        "正確。接觸電阻與筆芯串聯，使每一筆讀數都多出一個固定值，整條線往上平移。",
+        "長度量錯會讓點左右偏移，不會讓整條線一致上移。"] },
+  { q:"0.5 mm 筆芯換成 2.0 mm（同長度、同硬度），電阻大約變成原來的：",
+    o:["4 倍","1/4","1/16","不變"], a:2,
+    fb:["直徑是 4 倍，但電阻與<b>截面積</b>有關，不是與直徑。",
+        "你算的是直徑的比。截面積和直徑是平方關係。",
+        "正確。直徑 4 倍 → 截面積 4²＝16 倍 → 電阻約為 1/16。",
+        "截面積變大，電流路徑變寬，電阻會變小。"] },
+  { q:"電壓 3.0 V，量到電流 50 mA，此段筆芯的電阻為：",
+    o:["6 Ω","60 Ω","150 Ω","0.017 Ω"], a:1,
+    fb:["再檢查一次單位：50 mA = 0.05 A。",
+        "正確。R = V ÷ I = 3.0 ÷ 0.05 = 60 Ω。",
+        "這是 3.0 × 50 的結果，但歐姆定律是相除不是相乘。",
+        "你把電流除以電壓了，順序相反。"] },
+  { q:"某組每一筆實測值都比模擬高約 1.5 Ω，趨勢完全一致。最合理的判斷是：",
+    o:["實驗完全失敗，要重做","存在系統性誤差，可能來自接觸電阻","筆芯導電原理與課本不同","模擬程式算錯了"], a:1,
+    fb:["趨勢一致代表實驗是成功的，只是有固定偏差。",
+        "正確。所有點一致偏移屬於系統性誤差，接觸電阻是最常見的來源。",
+        "趨勢一致正好支持課本的關係，沒有矛盾。",
+        "模擬本來就只是模型值，兩者不同是正常的，不需要歸咎哪一方算錯。"] },
+  { q:"下列哪一項應用，與「改變電流路徑長度來改變電阻」的原理<b>最接近</b>？",
+    o:["電池串聯提高電壓","滑動變阻器（音量旋鈕）","保險絲熔斷","LED 的單向導電"], a:1,
+    fb:["串聯電池改變的是電壓，不是電阻。",
+        "正確。滑動接點在電阻體上移動，改變電流通過的長度。",
+        "保險絲靠過熱熔斷切斷電路，不是連續改變電阻。",
+        "LED 的單向導電來自半導體特性，與路徑長度無關。"] }
+];
+let quizState = [];
+function buildQuiz(){
+  const box = $("#quizBox"); if(!box) return;
+  const qs = MODE==="elem" ? QUIZ_ELEM : QUIZ_JUNIOR;
+  quizState = qs.map(()=> null);
+  box.textContent="";
+  qs.forEach((q,qi)=>{
+    const d = document.createElement("div");
+    d.className="quiz-q";
+    const h = document.createElement("div");
+    h.className="qh"; h.innerHTML = "第 "+(qi+1)+" 題　"+q.q;
+    d.appendChild(h);
+    q.o.forEach((opt,oi)=>{
+      const b = document.createElement("button");
+      b.type="button"; b.className="quiz-opt"; b.innerHTML = "（"+"ABCD"[oi]+"）"+opt;
+      b.addEventListener("click", ()=>{
+        if(quizState[qi]!==null) return;
+        quizState[qi] = oi;
+        const ok = oi===q.a;
+        b.classList.add(ok?"correct":"wrong");
+        if(!ok) Array.from(d.querySelectorAll(".quiz-opt"))[q.a].classList.add("correct");
+        const fb = document.createElement("div");
+        fb.className = "quiz-fb "+(ok?"ok":"ng");
+        fb.innerHTML = (ok?"✓ ":"✗ ")+q.fb[oi];
+        d.appendChild(fb);
+        updateScore();
+      });
+      d.appendChild(b);
+    });
+    box.appendChild(d);
+  });
+  updateScore();
+}
+function updateScore(){
+  const qs = MODE==="elem" ? QUIZ_ELEM : QUIZ_JUNIOR;
+  const done = quizState.filter(v=> v!==null).length;
+  const right = quizState.filter((v,i)=> v===qs[i].a).length;
+  $("#quizScore").textContent = done ? ("已作答 "+done+" / "+qs.length+"　答對 "+right+" 題") : "";
+  if(done===qs.length) store.set("quizScore", right+"/"+qs.length);
+}
+$("#quizReset").addEventListener("click", buildQuiz);
+
+/* =========================================================
+   成果卡
+   ========================================================= */
+$("#makeCard").addEventListener("click", ()=>{
+  const box = $("#resultCard");
+  const q = store.get("question","（還沒寫）");
+  const sent = store.get("sentence","（還沒完成變因分類）");
+  const p5 = store.get("t5Predict","（還沒預測）");
+  const sc = store.get("quizScore","（還沒完成闖關）");
+  let trend = "（還沒有實測資料）";
+  if(obsData.length>=2){
+    const first = obsData[0], last = obsData[obsData.length-1];
+    const up = last.v > first.v;
+    trend = MODE==="elem"
+      ? ("從 "+fmt(first.L,1)+" cm 到 "+fmt(last.L,1)+" cm，亮度等級從 "+fmt(first.v,1)+" 變成 "+fmt(last.v,1)+"，"+(up?"變亮":"變暗")+"了。")
+      : ("從 "+fmt(first.L,1)+" cm 到 "+fmt(last.L,1)+" cm，電阻從 "+fmt(first.v,1)+" Ω 變成 "+fmt(last.v,1)+" Ω，"+(up?"增加":"減少")+"了。");
+  }
+  box.style.display="block";
+  box.innerHTML =
+    '<h3 style="margin-top:0">我的探究成果卡</h3>'+
+    '<dl style="margin:0">'+
+    '<dt>我想探究的問題</dt><dd>'+q+'</dd>'+
+    '<dt>我的實驗設計</dt><dd>'+sent+'</dd>'+
+    '<dt>我一開始的預測</dt><dd>'+p5+'</dd>'+
+    '<dt>我實際量到的結果</dt><dd>'+trend+'</dd>'+
+    '<dt>實測筆數</dt><dd>'+obsData.length+' 筆</dd>'+
+    '<dt>闖關成績</dt><dd>'+sc+'</dd>'+
+    '</dl>'+
+    '<p style="font-size:.85rem;color:var(--ink-soft);margin:12px 0 0">截圖或列印這張卡片交給老師。</p>';
+  box.scrollIntoView({behavior: reduceMotion?"auto":"smooth", block:"nearest"});
+});
+
+/* =========================================================
+   初始化
+   ========================================================= */
+buildElectrons(); setStage(1); buildHardnessBars();
+if(reduceMotion){ gPlaying=false; $("#svgGraphite").classList.add("is-paused"); $("#gPlay").textContent="▶ 播放"; }
+renderVars(); renderVarSentence();
+drawWiring();
+applyMode(MODE);
+renderLen(); renderLead(); renderPaper(); renderObs();
+selectTab(0);
+</script>
+</body>
+</html>
